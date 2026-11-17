@@ -41,7 +41,9 @@ def on_goal(msg):
         goal = None
         return
     p = msg.pose.position
-    goal = (p.x, p.y, p.z, yaw_from_quat(msg.pose.orientation))
+    # handheld_fsm.cpp draws SLC (clo) targets purple (no green), frontiers orange.
+    is_slc = msg.color.b > 0.5 and msg.color.g < 0.2
+    goal = (p.x, p.y, p.z, yaw_from_quat(msg.pose.orientation), is_slc)
 
 
 def wrap_deg(a):
@@ -69,7 +71,12 @@ def render():
     if goal is None:
         return '\033[90m【方向】目前沒有目標（規劃中或已到達）\033[0m'
     x, y, z, yaw, _ = pose
-    gx, gy, gz, gyaw = goal
+    gx, gy, gz, gyaw, is_slc = goal
+    tag = '\033[1;95m[SLC 點]\033[0m ' if is_slc else ''
+    return tag + render_target(x, y, z, yaw, gx, gy, gz, gyaw, is_slc)
+
+
+def render_target(x, y, z, yaw, gx, gy, gz, gyaw, is_slc):
     dist = math.hypot(gx - x, gy - y)
     dz = gz - z
     # The planner's reached test is the 3D distance (handheld_fsm.cpp), so a
@@ -86,6 +93,8 @@ def render():
         arrow, text = direction_text(rel)
         color = '92' if abs(rel) < 20 else '93'
         return '\033[1;{}m【方向】{} 目標在{}，距離 {:.1f} m{}\033[0m'.format(color, arrow, text, dist, height)
+    if is_slc:
+        return '\033[1;95m【方向】已到 SLC 點：腳不要動，慢慢原地轉一整圈\033[0m'
     turn = wrap_deg(math.degrees(gyaw - yaw))
     if abs(turn) <= REACH_YAW:
         return '\033[1;92m【方向】✓ 已到目標，朝向正確：保持不動{}\033[0m'.format(height)

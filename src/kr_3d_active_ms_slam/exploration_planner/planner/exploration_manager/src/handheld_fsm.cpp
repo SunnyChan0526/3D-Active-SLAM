@@ -67,7 +67,12 @@ void msExplorationFSM::handheldVisualize(bool local_valid) {
   goal.pose.position.x = handheld_goal_.x(); goal.pose.position.y = handheld_goal_.y(); goal.pose.position.z = handheld_goal_.z();
   goal.pose.orientation.z = std::sin(handheld_goal_yaw_ / 2);
   goal.pose.orientation.w = std::cos(handheld_goal_yaw_ / 2);
-  goal.color.r = 1; goal.color.g = .5; goal.color.b = 0;
+  // Orange = frontier (ftr) target; purple = semantic loop closure (clo) target.
+  if (handheld_goal_token_.first.rfind("clo", 0) == 0) {
+    goal.color.r = .7; goal.color.g = 0; goal.color.b = 1;
+  } else {
+    goal.color.r = 1; goal.color.g = .5; goal.color.b = 0;
+  }
   handheld_goal_pub_.publish(goal);
 }
 
