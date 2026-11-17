@@ -10,7 +10,7 @@ Monorepo containing the three catkin workspaces' sources plus setup/run scripts.
 | `setup/` | install / build / start / diagnose scripts and notes |
 
 Upstream origins and base commits: see [UPSTREAM.md](UPSTREAM.md).
-Project status and how to run: [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+System overview and how to run: [docs/SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md).
 What to do next: [docs/next_steps_roadmap.md](docs/next_steps_roadmap.md).
 New-machine setup: see [new_ubuntu_migration.md](new_ubuntu_migration.md) and
 [local_migration_status.txt](local_migration_status.txt).

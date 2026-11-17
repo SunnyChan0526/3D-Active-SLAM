@@ -2,7 +2,7 @@
 
 > 建立：2026-11-16｜更新：2026-11-17 晚，PR #1 合併進 main（merge commit `314d3ae`）之後
 > 原則：全程維持 `fsm/planning_only=true`；不為了 demo 放寬碰撞、膨脹半徑或動態限制。
-> 搭配 [PROJECT_STATUS.md](PROJECT_STATUS.md)（系統說明與已知限制）、RELATED_PAPERS.md（文獻與閱讀順序）一起看。這份只放待辦與進度。
+> 搭配 [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)（系統說明與已知限制）、RELATED_PAPERS.md（文獻與閱讀順序）一起看。這份只放待辦與進度。
 
 ## 11-17 實機測試後的結論（main `314d3ae`）
 - ✅ **SLC 端到端第一次真實成功**（`20261117_174344`，`clo96`）：候選 → COP 評估 → 排入路線 → 走到點、原地轉 → 比對成功 → `[Handheld Observed] clo96` → 因子圖加入迴環（`WILL ADD loop closure factor`）→ SLAM 位姿修正。
@@ -22,7 +22,7 @@
 ## 步驟 0｜整理程式碼（大致完成）
 - [x] Monorepo 加上 Git、`.gitignore`、模型下載腳本、上游版本紀錄。
 - [x] 安裝並登入 `gh`（之後可以直接開 PR）。
-- [x] PROJECT_STATUS.md 改成以 repo 為準，寫進手持自動模式與 11-17 的 SLC 結果；與本 roadmap 一起放進 `docs/`（11-17）。
+- [x] 原 PROJECT_STATUS.md 改名為 SYSTEM_OVERVIEW.md，改成以 repo 為準，寫進手持自動模式與 11-17 的 SLC 結果；與本 roadmap 一起放進 `docs/`（11-17）。
 - [x] README 裡的 clone 網址改成實際網址（11-17）。
 - [ ] 清理：repo 裡還追蹤著 6 個 `.bak` 或 `*.before_*` 檔，以及 `src/kr_3d_active_ms_slam/backups/`（7.7 MB）。有 Git 歷史之後可以刪掉。根目錄的舊移植包 `kr3d_migration_20261103_161146*` 沒有進 git，只佔本機空間，確認不再需要就可以刪。
 - [ ] 路徑：還有 9 個 tracked 檔案含 `/home/sunny`；launch 裡寫死了 `$(env HOME)/Desktop/ActiveSLAM_move2Laptop`，到板子上要改成 `$(find pkg)` 或環境變數。

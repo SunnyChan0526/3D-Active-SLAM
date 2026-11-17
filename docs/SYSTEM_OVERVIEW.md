@@ -1,4 +1,6 @@
-# ActiveSLAM 專案現況（PROJECT_STATUS）
+# ActiveSLAM 系統總覽（SYSTEM_OVERVIEW）
+
+> 2026-11-17 前名為 PROJECT_STATUS.md。
 
 最後更新：2026-11-17（main `314d3ae`，PR #1 合併後）
 
