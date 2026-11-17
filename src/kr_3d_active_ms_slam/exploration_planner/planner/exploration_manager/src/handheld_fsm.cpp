@@ -134,10 +134,11 @@ void msExplorationFSM::handheldStep() {
     const double yaw_error = range(fd_->slam_odom_yaw_ - handheld_goal_yaw_);
     const bool closure = handheld_goal_token_.first.find("clo") == 0;
     // Start the SLC measurement within 0.5 m, but keep it running until the
-    // camera is > 1.0 m away: a hand-held camera turning in place orbits the
+    // camera is > 1.5 m away: a hand-held camera turning in place orbits the
     // person at ~0.3-0.5 m, which crossed a single 0.5 m threshold 18 times in
-    // one run and cancelled/restarted the measurement each time.
-    if (closure && (distance <= .5 || (handheld_closure_wait_ && distance <= 1.0))) {
+    // one run and cancelled/restarted the measurement each time; with 1.0 m it
+    // still left once (1.05 m). SLOAM itself accepts the closure within 8 m.
+    if (closure && (distance <= .5 || (handheld_closure_wait_ && distance <= 1.5))) {
       if (!handheld_closure_wait_) {
         // Only request semantic measurement processing, never a motion command.
         std::lock_guard<std::mutex> lock(expl_manager_->mutex_);
@@ -160,7 +161,7 @@ void msExplorationFSM::handheldStep() {
         handheld_has_goal_ = false; handheld_closure_wait_ = false;
         handheldStatus("此次語意迴環未成功，不計為完成；繼續評估其他目標。");
       } else {
-        handheldStatus("已到語意迴環位置：請原地慢慢轉一圈掃描（相機離點 1 m 內都算），等候真實迴環結果。");
+        handheldStatus("已到語意迴環位置：請原地慢慢轉一圈掃描（相機離點 1.5 m 內都算），等候真實迴環結果。");
         return;
       }
     } else if (handheld_closure_wait_) {

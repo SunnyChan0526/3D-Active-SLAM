@@ -73,4 +73,6 @@ bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh
   2. 新候選觸發：出現從未交給 COP 的候選 id 就重算，兩次間隔至少 10 秒（避免 id 跳動反覆重算）。
   3. 探索完（沒有 frontier）但仍有候選時，改為「只走 SLC」：一次一個、最近的優先、每個只試一次（`[Handheld SLC-only]`）。原作者只在 frontier 之間插入 SLC，小房間探索完就再也不會安排。
 - `ACTIVE_SLAM_SLC_IG_WEIGHT`（預設 6＝原作者寫死的 f_sc）：SLC 資訊增益的權重，啟動時會在 vins.log 印出 `SLC information gain weight f_sc`。**只用來驗證 SLC 流程**，正式實驗維持 6。`slc_summary.txt` 會列出 SLC 與 frontier 效用，可據此判斷要調多少。
-- SLC 量測加入距離緩衝：0.5 m 內開始，離開超過 1.0 m 才取消。手持相機原地轉身時，相機會繞著人畫半徑約 0.3～0.5 m 的圓；20261117_172206 這一輪跨出 0.5 m 共 18 次，量測重送 22 次，其中一次已配對成功的結果因為請求被取消而遺失。方向提示會讀 `/exploration_node/handheld_status`，量測中一律顯示原地轉圈。
+- SLC 量測加入距離緩衝：0.5 m 內開始，離開超過 1.5 m 才取消（1.0 m 時 20261117_174344 仍出界一次）。手持相機原地轉身時，相機會繞著人畫半徑約 0.3～0.5 m 的圓；20261117_172206 這一輪跨出 0.5 m 共 18 次，量測重送 22 次，其中一次已配對成功的結果因為請求被取消而遺失。方向提示會讀 `/exploration_node/handheld_status`，量測中一律顯示原地轉圈。
+- 迴環比對上限：`loop_closure_server_node` 的比對（`estimate_bearingpos`）會窮舉所有物體與偵測的配對。20261117_174344 一次偵測到 11 個物體，約 1.2e11 種組合，伺服器整個 SLC 嘗試期間都卡住。現在只取最近的 `~max_measurements`（預設 6）個偵測；實測 14 個地標時 5／6／7 個偵測分別約 0.00／0.07／0.82 秒。
+- 20261117_174344：**第一次 SLC 真實成功**（clo96），因子圖加入迴環（`WILL ADD loop closure factor`），SLAM 位姿在 0.2 秒內修正約 0.8 m、比對估計朝向差 7.6°。修正量偏大，正確性需要 ground truth（步驟 2 的 AprilTag／捲尺）確認。
