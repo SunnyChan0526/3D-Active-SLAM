@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include "exploration_msgs/PlanCOPAction.h"
 #include "sloam_msgs/EvaluateLoopClosure.h"
@@ -108,7 +109,12 @@ public:
   // Handheld Testing Mode, Option A (default off): reachable camera z range.
   bool handheld_height_limit_ = false;
   double handheld_z_min_ = 0.0, handheld_z_max_ = 0.0;
+  double closure_ig_weight_ = 6.0;
   bool handheldNeedsGlobalRefresh();
+  bool handheldUnplannedClosure();
+  int planHandheldClosureOnly(const Vector3d& graph_pos, const Vector3d& pos, const Vector3d& pos_slam,
+                              const Vector3d& vel, const Vector3d& acc, const Vector3d& yaw,
+                              const Vector3d& yaw_slam);
   bool confirmHandheldObservation(const std::pair<std::string, size_t>& token, bool closure_observed);
   bool skipHandheldGoal(const std::pair<std::string, size_t>& token);
   std::pair<std::string, size_t> handheldGoalToken();
@@ -184,6 +190,10 @@ private:
   int init_tour_len_ = 0;
   size_t handheld_completed_ = 0, handheld_initial_ = 0;
   size_t handheld_generation_ = 0;
+  bool handheld_unplanned_closure_logged_ = false;
+  std::unordered_set<int> handheld_seen_closure_ids_;      // offered to COP at least once
+  std::unordered_set<int> handheld_attempted_closure_ids_; // given as closure-only goal
+  ros::Time handheld_last_tour_time_;
   size_t global_request_id_ = 0;
   std::pair<std::string, size_t> handheld_last_planned_token_;
   void beginHandheldPlanningAttempt();

@@ -8,6 +8,23 @@
   <arg name="start_vins" default="true"/>
   <arg name="start_sloam" default="true"/>
   <arg name="start_loop" default="true"/>
+  <!-- SLC candidate generator (author's loop_closure_submap_node.py). Without it
+       /factor_graph_atl/loop_closure_submap has no publisher and the planner's
+       loop_closure_ids_ stays empty, so no semantic loop closure target is ever planned.
+       Defaults below equal the original hard-coded values (multi-floor building scale). -->
+  <!-- Planner map bounds; record_isolated_vins_test.sh swaps in a per-run room file
+       when ACTIVE_SLAM_ROOM_FRONT/BACK/LEFT/RIGHT are set. -->
+  <arg name="mapper_config" default="$(find exploration_manager)/config/mapper_sunny.yaml"/>
+  <arg name="start_loop_candidates" default="$(arg start_loop)"/>
+  <arg name="slc_floor_height" default="3.5"/>
+  <arg name="slc_cluster_distance" default="3.5"/>
+  <arg name="slc_cluster_min_samples" default="4"/>
+  <arg name="slc_max_key_pose_cluster_distance" default="7.0"/>
+  <arg name="slc_min_key_pose_to_landmark" default="1.5"/>
+  <!-- SLC information gain weight f_sc in planActiveLoopClosurePath; 6 = author's value.
+       Raise only to test the SLC path; experiments use 6. -->
+  <arg name="slc_ig_weight" default="6.0"/>
+  <param name="/exploration_node/active_closure/ig_weight" value="$(arg slc_ig_weight)"/>
   <arg name="start_semantic" default="true"/>
   <arg name="start_cloud" default="true"/>
   <arg name="start_cop" default="true"/>
@@ -43,6 +60,15 @@
         launch-prefix="$(env HOME)/Desktop/ActiveSLAM_move2Laptop/setup/vins_launch_prefix.sh $(arg disable_ir_emitter)"
         args="$(env HOME)/vins_ws/src/VINS-Fusion/config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
   <include if="$(arg start_loop)" file="$(find loop_closure)/launch/loop_closure_node.launch"/>
+  <node if="$(arg start_loop_candidates)" pkg="scan2shape_launch" type="loop_closure_submap_node.py"
+        name="loop_closure_submap_node" output="screen">
+    <param name="reference_frame" value="world"/>
+    <param name="floor_height" value="$(arg slc_floor_height)"/>
+    <param name="cluster_distance" value="$(arg slc_cluster_distance)"/>
+    <param name="cluster_min_samples" value="$(arg slc_cluster_min_samples)"/>
+    <param name="max_key_pose_cluster_distance" value="$(arg slc_max_key_pose_cluster_distance)"/>
+    <param name="min_key_pose_to_landmark" value="$(arg slc_min_key_pose_to_landmark)"/>
+  </node>
   <include if="$(arg start_sloam)" file="$(find sloam)/launch/run_indoor_large_scale_exploration_sunny.launch">
     <arg name="enable_rviz" value="false"/>
   </include>
@@ -60,6 +86,7 @@
     <arg name="handheld_z_min" value="$(arg handheld_z_min)"/>
     <arg name="handheld_z_max" value="$(arg handheld_z_max)"/>
     <arg name="handheld_z_samples" value="$(arg handheld_z_samples)"/>
+    <arg name="mapper_config" value="$(arg mapper_config)"/>
   </include>
   <include if="$(arg start_rviz)" file="$(find exploration_manager)/launch/real_robot_rviz.launch"/>
 </launch>

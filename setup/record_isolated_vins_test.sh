@@ -28,7 +28,7 @@ echo "Pipeline: $pipeline"
 echo "Test mode: $test_mode"
 printf '\n\033[1;93m【啟動】先等待相機與 RViz 就緒。\n就緒後才會開始準備倒數，再進入正式測試。\033[0m\n\n'
 bash "$setup_dir/stop_active_slam.sh"
-camera_pid=''; pipeline_pid=''; bag_pid=''; disk_guard_pid=''; session_pid=''
+camera_pid=''; pipeline_pid=''; bag_pid=''; disk_guard_pid=''; session_pid=''; slc_monitor_pid=''; guide_pid=''
 cleanup() {
   [[ -z "$session_pid" ]] || kill -TERM "$session_pid" 2>/dev/null || true
   [[ -z "$session_pid" ]] || wait "$session_pid" 2>/dev/null || true
@@ -46,6 +46,11 @@ cleanup() {
   fi
   [[ -z "$pipeline_pid" ]] || wait "$pipeline_pid" 2>/dev/null || true
   [[ -z "$camera_pid" ]] || wait "$camera_pid" 2>/dev/null || true
+  [[ -z "$guide_pid" ]] || kill -INT "$guide_pid" 2>/dev/null || true
+  [[ -z "$guide_pid" ]] || wait "$guide_pid" 2>/dev/null || true
+  # Last, so vins.log is complete: the monitor drains it and prints slc_summary.txt.
+  [[ -z "$slc_monitor_pid" ]] || kill -TERM "$slc_monitor_pid" 2>/dev/null || true
+  [[ -z "$slc_monitor_pid" ]] || wait "$slc_monitor_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
@@ -58,6 +63,50 @@ launch_args+=("handheld_auto:=${ACTIVE_SLAM_HANDHELD_AUTO:-false}")
 launch_args+=("handheld_height_limit:=${ACTIVE_SLAM_HANDHELD_HEIGHT_LIMIT:-false}"
   "handheld_z_min:=${ACTIVE_SLAM_HANDHELD_Z_MIN:-0.1}" "handheld_z_max:=${ACTIVE_SLAM_HANDHELD_Z_MAX:-0.4}"
   "handheld_z_samples:=${ACTIVE_SLAM_HANDHELD_Z_SAMPLES:-3}")
+# Semantic loop closure candidate parameters (defaults = author's original values).
+launch_args+=("slc_floor_height:=${ACTIVE_SLAM_SLC_FLOOR_HEIGHT:-3.5}"
+  "slc_cluster_distance:=${ACTIVE_SLAM_SLC_CLUSTER_DISTANCE:-3.5}"
+  "slc_cluster_min_samples:=${ACTIVE_SLAM_SLC_CLUSTER_MIN_SAMPLES:-4}"
+  "slc_max_key_pose_cluster_distance:=${ACTIVE_SLAM_SLC_MAX_KEY_POSE_CLUSTER_DISTANCE:-7.0}"
+  "slc_min_key_pose_to_landmark:=${ACTIVE_SLAM_SLC_MIN_KEY_POSE_TO_LANDMARK:-1.5}"
+  "slc_ig_weight:=${ACTIVE_SLAM_SLC_IG_WEIGHT:-6.0}")
+# Room bounds (optional): metres from the START position to each wall, using the
+# camera heading at start. VINS world: start heading = +Y, left = -X (checked on
+# four runs, 2026-11-17). Map boundary AND update box are both set so cells past
+# the walls are "not in map" (no frontiers), not "unknown" (endless frontiers).
+room_vars=(ACTIVE_SLAM_ROOM_FRONT ACTIVE_SLAM_ROOM_BACK ACTIVE_SLAM_ROOM_LEFT ACTIVE_SLAM_ROOM_RIGHT)
+room_set=0; for v in "${room_vars[@]}"; do [[ -n "${!v:-}" ]] && room_set=$((room_set+1)); done
+if (( room_set > 0 )); then
+  if (( room_set < 4 )); then
+    echo "房間範圍需要四個值都設定：${room_vars[*]}"; exit 1
+  fi
+  python3 - "$run_dir/mapper_room.yaml" "$ACTIVE_SLAM_ROOM_FRONT" "$ACTIVE_SLAM_ROOM_BACK" \
+    "$ACTIVE_SLAM_ROOM_LEFT" "$ACTIVE_SLAM_ROOM_RIGHT" "${ACTIVE_SLAM_ROOM_MARGIN:-0.3}" "$setup_dir" <<'PY2'
+import re, sys
+from pathlib import Path
+out = sys.argv[1]
+try:
+    front, back, left, right, margin = map(float, sys.argv[2:7])
+except ValueError:
+    raise SystemExit('房間範圍必須是數字（公尺）。')
+if min(front, back, left, right) <= 0 or margin < 0:
+    raise SystemExit('房間範圍必須是正數（公尺），邊距不可為負。')
+b = {'x_min': -(left + margin), 'x_max': right + margin,
+     'y_min': -(back + margin), 'y_max': front + margin}
+src = Path(sys.argv[7]).parent / 'src/kr_3d_active_ms_slam/exploration_planner/planner/exploration_manager/config/mapper_sunny.yaml'
+text = src.read_text()
+for kind in ('map_min_boundary', 'box_min', 'map_max_boundary', 'box_max'):
+    for axis in ('x', 'y'):
+        key = '{}_{}'.format(kind, axis)
+        value = b[axis + ('_min' if 'min' in kind else '_max')]
+        text, n = re.subn(r'(?m)^(\s+{}:\s*)[-0-9.]+'.format(key), r'\g<1>{:.2f}'.format(value), text, count=1)
+        if n != 1:
+            raise SystemExit('mapper_sunny.yaml 找不到 ' + key)
+Path(out).write_text('# Generated per run from mapper_sunny.yaml (ACTIVE_SLAM_ROOM_*)\n' + text)
+print('房間範圍：X {x_min:.2f}～{x_max:.2f} m（左右），Y {y_min:.2f}～{y_max:.2f} m（後前），含邊距'.format(**b))
+PY2
+  launch_args+=("mapper_config:=$run_dir/mapper_room.yaml")
+fi
 launch_args+=("semantic_cpu_threads:=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}"
   "semantic_cpu_nice:=${ACTIVE_SLAM_SEMANTIC_NICE:-0}")
 echo "Semantic CPU settings: threads=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}, nice=${ACTIVE_SLAM_SEMANTIC_NICE:-0}"
@@ -88,12 +137,29 @@ rosnode list >/dev/null
 # an emergency cap; normally recording stops explicitly after the full guide.
 record_args=(--duration=300)
 if [[ "$test_mode" == free ]]; then
-  # A rolling buffer only removes this session's oldest split bags.
-  record_args=(--split --size=1024 --max-splits=4 --repeat-latched)
+  if [[ "${ACTIVE_SLAM_RECORD_FULL:-false}" == true ]]; then
+    # Experiment runs: keep the whole session (start pose is needed for
+    # return-to-start drift). Still split into 1 GB files; nothing is deleted.
+    record_args=(--split --size=1024 --repeat-latched)
+    echo "Recording: FULL session kept (ACTIVE_SLAM_RECORD_FULL=true)."
+  else
+    # A rolling buffer only removes this session's oldest split bags.
+    record_args=(--split --size=1024 --max-splits=4 --repeat-latched)
+  fi
+fi
+# Color + aligned depth let the semantic pipeline (YOLO, cloud processing,
+# SLOAM object factors) be replayed offline. Large: roughly 25-45 MB/s.
+semantic_topics=()
+if [[ "${ACTIVE_SLAM_RECORD_SEMANTIC:-false}" == true ]]; then
+  semantic_topics=(/camera/color/image_raw /camera/color/camera_info
+    /camera/aligned_depth_to_color/image_raw /camera/aligned_depth_to_color/camera_info
+    /factor_graph_atl/loop_closure_submap)
+  echo "Recording: semantic replay topics included (ACTIVE_SLAM_RECORD_SEMANTIC=true)."
 fi
 rosbag record --lz4 --min-space=2G "${record_args[@]}" -O "$run_dir/sensors.bag" \
   /camera/imu /camera/infra1/image_rect_raw /camera/infra2/image_rect_raw \
   /camera/infra1/camera_info /camera/infra2/camera_info /tf_static /tf \
+  "${semantic_topics[@]}" \
   /vins_estimator/odometry /vins_estimator/imu_propagate \
   /vins_estimator/point_cloud /vins_estimator/keyframe_point /rosout \
   /factor_graph_atl/quadrotor/high_freq_odom \
@@ -142,6 +208,14 @@ sleep 5
 roslaunch "$setup_dir/all_legacy_planning_only.launch" "${launch_args[@]}" \
   start_camera:=false start_rviz:=false > "$run_dir/vins.log" 2>&1 &
 pipeline_pid=$!
+if [[ "$full_nodes" == true ]]; then
+  # Records the SLC chain to slc_events.log / slc_summary.txt; prints milestones only.
+  python3 "$setup_dir/slc_monitor.py" "$run_dir" </dev/null &
+  slc_monitor_pid=$!
+  # One self-updating line: which way / how far the orange target is from the camera.
+  python3 "$setup_dir/handheld_direction_guide.py" </dev/null 2>/dev/null &
+  guide_pid=$!
+fi
 python - "$pipeline" <<'PY'
 import rospy,sys
 from roscpp.srv import GetLoggers, SetLoggerLevel

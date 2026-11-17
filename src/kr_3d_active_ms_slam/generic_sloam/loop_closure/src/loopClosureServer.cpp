@@ -1,4 +1,5 @@
 #include "loop_closure/loopClosureServer.h"
+#include <algorithm>
 
 
 LoopClosureServer::LoopClosureServer(ros::NodeHandle &nh) : nh_(nh) {
@@ -183,6 +184,19 @@ void LoopClosureServer::findLoopClosure() {
   }
 
   ROS_INFO_STREAM("relative_msts size: " << relative_msts.size());
+  // estimate_bearingpos enumerates every object/measurement assignment:
+  // ~3.6e5 candidates for 5 measurements vs 14 landmarks (<0.1 s), ~1.2e11
+  // for 11 (never finished; the single-threaded server then hung for the
+  // whole SLC attempt). Keep only the nearest detections (best depth).
+  int max_measurements = 6;
+  ros::param::param<int>("~max_measurements", max_measurements, 6);
+  if (max_measurements >= 4 && static_cast<int>(relative_msts.size()) > max_measurements) {
+    std::sort(relative_msts.begin(), relative_msts.end(),
+              [](const Eigen::Vector3d& a, const Eigen::Vector3d& b) { return a.norm() < b.norm(); });
+    ROS_WARN_STREAM("[findLoopClosure] keeping the " << max_measurements << " nearest of "
+                    << relative_msts.size() << " detections to bound matching time");
+    relative_msts.resize(max_measurements);
+  }
   Eigen::Vector3d position_estimate;
   double yaw_estimate;
   bool in_fa = false;

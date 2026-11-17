@@ -67,7 +67,12 @@ void msExplorationFSM::handheldVisualize(bool local_valid) {
   goal.pose.position.x = handheld_goal_.x(); goal.pose.position.y = handheld_goal_.y(); goal.pose.position.z = handheld_goal_.z();
   goal.pose.orientation.z = std::sin(handheld_goal_yaw_ / 2);
   goal.pose.orientation.w = std::cos(handheld_goal_yaw_ / 2);
-  goal.color.r = 1; goal.color.g = .5; goal.color.b = 0;
+  // Orange = frontier (ftr) target; purple = semantic loop closure (clo) target.
+  if (handheld_goal_token_.first.rfind("clo", 0) == 0) {
+    goal.color.r = .7; goal.color.g = 0; goal.color.b = 1;
+  } else {
+    goal.color.r = 1; goal.color.g = .5; goal.color.b = 0;
+  }
   handheld_goal_pub_.publish(goal);
 }
 
@@ -128,7 +133,12 @@ void msExplorationFSM::handheldStep() {
     const double distance = (fd_->slam_odom_pos_ - handheld_goal_).norm();
     const double yaw_error = range(fd_->slam_odom_yaw_ - handheld_goal_yaw_);
     const bool closure = handheld_goal_token_.first.find("clo") == 0;
-    if (closure && distance <= .5) {
+    // Start the SLC measurement within 0.5 m, but keep it running until the
+    // camera is > 1.5 m away: a hand-held camera turning in place orbits the
+    // person at ~0.3-0.5 m, which crossed a single 0.5 m threshold 18 times in
+    // one run and cancelled/restarted the measurement each time; with 1.0 m it
+    // still left once (1.05 m). SLOAM itself accepts the closure within 8 m.
+    if (closure && (distance <= .5 || (handheld_closure_wait_ && distance <= 1.5))) {
       if (!handheld_closure_wait_) {
         // Only request semantic measurement processing, never a motion command.
         std::lock_guard<std::mutex> lock(expl_manager_->mutex_);
@@ -151,7 +161,7 @@ void msExplorationFSM::handheldStep() {
         handheld_has_goal_ = false; handheld_closure_wait_ = false;
         handheldStatus("此次語意迴環未成功，不計為完成；繼續評估其他目標。");
       } else {
-        handheldStatus("已到語意迴環位置：請保持位置，慢慢原地轉一圈掃描；等候真實迴環結果。");
+        handheldStatus("已到語意迴環位置：請原地慢慢轉一圈掃描（相機離點 1.5 m 內都算），等候真實迴環結果。");
         return;
       }
     } else if (handheld_closure_wait_) {

@@ -47,3 +47,32 @@ bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh
 ### 2026-11-12：失敗恢復與搜尋網格
 
 手持模式的 A* 網格改為 0.1 m，對齊目前局部地圖；時間預算保持 0.2 秒。局部規劃連續四次失敗時會略過該目標，並明確提示「不計為完成觀察」，再嘗試後續目標。失敗計數不再沿用到新目標。局部失敗／掃描提示與真正 COP 等待已分離，避免舊版旋轉恢復分支造成反覆假逾時。安全膨脹與動態限制保留；此變更不保證每個探索目標都可達。詳見 `tests/handheld_recovery_change.md`。
+
+### 2026-11-17：接上語意迴環候選、可錄語意重播資料
+
+- `all_legacy_planning_only.launch` 新增 `loop_closure_submap_node.py`（`start_loop_candidates`，預設跟隨 `start_loop`）。之前沒有啟動它，`/factor_graph_atl/loop_closure_submap` 沒有發布者，規劃器的 `loop_closure_ids_` 一直是空的，所以從來不會選中 SLC 目標。
+- 候選參數改成 ROS param，預設值與原作者寫死的值相同（大樓多樓層尺度）。手持小場地可用環境變數調整，例如：
+  `ACTIVE_SLAM_SLC_CLUSTER_MIN_SAMPLES=3 ACTIVE_SLAM_SLC_CLUSTER_DISTANCE=2.0 ACTIVE_SLAM_SLC_MAX_KEY_POSE_CLUSTER_DISTANCE=4.0`
+  （論文寫每群至少 3 個物件，程式原值為 4）。
+- 驗證：`rostopic echo -n1 /factor_graph_atl/loop_closure_submap`；vins.log 應出現 `Loop closure submap callback` 與 `[Plan Active Closure] Closure Utility`。
+- 錄製選項（預設行為不變）：
+  - `ACTIVE_SLAM_RECORD_SEMANTIC=true`：加錄 color、aligned depth 及其 camera_info，可離線重播 YOLO／點雲／SLOAM。約 25–45 MB/s。
+  - `ACTIVE_SLAM_RECORD_FULL=true`：不滾動刪除，保留整輪（回起點漂移需要開頭資料）。注意磁碟空間。
+- 實驗用範例：
+  `ACTIVE_SLAM_RECORD_SEMANTIC=true ACTIVE_SLAM_RECORD_FULL=true bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh`
+- `planning_only=true`、避障與動態限制都未更動；尚未在實機上驗證。
+- 手持模式補上重算條件：目前路線規劃時沒有任何 SLC 候選、之後候選才出現，就要求一次全域 COP 重算（`[Handheld SLC]`）。只觸發一次，避免候選 id 在 key_pose_4／6 之間跳動時反覆重算；單一 frontier 捷徑會把當下候選記為已看過。需重新編譯 `exploration_manager`。
+- 自動紀錄：完整流程會在背景執行 `slc_monitor.py`，不用另開終端。終端只顯示【SLC】里程碑（節點啟動、首次候選、觸發重算、評估 SLC、插入 SLC 目標、成功／失敗）；完整時間軸寫在本輪資料夾的 `slc_events.log`，結束時把七步檢查結果寫進 `slc_summary.txt` 並顯示在終端。
+- 修正既有問題：手持模式在「需要重算」時，送出 COP 的程式只寫在 `!handheld_feedback_` 分支裡，所以目標還沒走完時從不送出，完成 10%、frontier 變化 15% 和 SLC 候選三個重算條件實際上都沒有作用。現在會繼續導向目前目標，同時送出 COP 請求（`[Handheld Refresh]`）。
+- 重算條件改回原作者無人機版：frontier 變化 ≥15% **且** 完成 ≥10% 才重算（另外保留 SLC 候選觸發與目標走完兩種情況）。原本的「或」在手持相機下每秒都會成立，造成 COP 約 1 Hz 重算、目標一直換。
+- 監控在目前目標變成 SLC 點時，會在終端用紫色提示位置。
+- 方向提示 `handheld_direction_guide.py`：終端最下面一行會持續更新，以相機目前朝向為基準顯示橘色目標的方向與距離（例如「↖ 目標在左前方 45°，距離 1.4 m」）；到 0.5 m 內改成提示原地轉幾度。位置與朝向用規劃器判斷到達的同一個 SLAM odometry（機體 x 軸＝相機前方，已用 bag 確認走路方向最接近 x 軸）。
+- 房間範圍（選用）：`ACTIVE_SLAM_ROOM_FRONT/BACK/LEFT/RIGHT` 為**起點**到前／後／左／右牆的公尺數（以啟動時相機朝向為前），會在本輪資料夾產生 `mapper_room.yaml`，把地圖邊界與更新範圍都設成房間＋`ACTIVE_SLAM_ROOM_MARGIN`（預設 0.3 m）。兩者都要縮，否則牆外格子是「未知」，邊界會一直產生 frontier。座標對應已用四輪 bag 確認：啟動朝向＝+Y、左＝-X。不設時沿用 `mapper_sunny.yaml`（12×11 m 場地）。
+- SLC 三項補強（手持模式）：
+  1. 高度限制下，SLC key pose 的高度夾進 [z_min, z_max]，不再整個略過（起點 key pose 0 的 z＝0 會被夾到 z_min）；到達仍是真實 3D 0.5 m、成功仍需真實迴環量測。
+  2. 新候選觸發：出現從未交給 COP 的候選 id 就重算，兩次間隔至少 10 秒（避免 id 跳動反覆重算）。
+  3. 探索完（沒有 frontier）但仍有候選時，改為「只走 SLC」：一次一個、最近的優先、每個只試一次（`[Handheld SLC-only]`）。原作者只在 frontier 之間插入 SLC，小房間探索完就再也不會安排。
+- `ACTIVE_SLAM_SLC_IG_WEIGHT`（預設 6＝原作者寫死的 f_sc）：SLC 資訊增益的權重，啟動時會在 vins.log 印出 `SLC information gain weight f_sc`。**只用來驗證 SLC 流程**，正式實驗維持 6。`slc_summary.txt` 會列出 SLC 與 frontier 效用，可據此判斷要調多少。
+- SLC 量測加入距離緩衝：0.5 m 內開始，離開超過 1.5 m 才取消（1.0 m 時 20261117_174344 仍出界一次）。手持相機原地轉身時，相機會繞著人畫半徑約 0.3～0.5 m 的圓；20261117_172206 這一輪跨出 0.5 m 共 18 次，量測重送 22 次，其中一次已配對成功的結果因為請求被取消而遺失。方向提示會讀 `/exploration_node/handheld_status`，量測中一律顯示原地轉圈。
+- 迴環比對上限：`loop_closure_server_node` 的比對（`estimate_bearingpos`）會窮舉所有物體與偵測的配對。20261117_174344 一次偵測到 11 個物體，約 1.2e11 種組合，伺服器整個 SLC 嘗試期間都卡住。現在只取最近的 `~max_measurements`（預設 6）個偵測；實測 14 個地標時 5／6／7 個偵測分別約 0.00／0.07／0.82 秒。
+- 20261117_174344：**第一次 SLC 真實成功**（clo96），因子圖加入迴環（`WILL ADD loop closure factor`），SLAM 位姿在 0.2 秒內修正約 0.8 m、比對估計朝向差 7.6°。修正量偏大，正確性需要 ground truth（步驟 2 的 AprilTag／捲尺）確認。
