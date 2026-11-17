@@ -13,14 +13,17 @@ import time
 
 import rospy
 from nav_msgs.msg import Odometry
+from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 
+STATUS = '/exploration_node/handheld_status'
 ODOM = '/factor_graph_atl/quadrotor/high_freq_odom'
 GOAL = '/planning_vis/handheld_goal'
 REACH_DIST = 0.5
 REACH_YAW = math.degrees(0.2)
 
 pose = None   # (x, y, z, yaw, wall time)
+slc_measuring = False  # handheld_fsm reports an SLC measurement in progress
 goal = None   # (x, y, z, yaw) or None when the planner deleted it
 
 
@@ -33,6 +36,12 @@ def on_odom(msg):
     global pose
     p = msg.pose.pose.position
     pose = (p.x, p.y, p.z, yaw_from_quat(msg.pose.pose.orientation), time.monotonic())
+
+
+def on_status(msg):
+    global slc_measuring
+    # Set while the planner waits for the real SLC result (kept until 1.0 m away).
+    slc_measuring = '語意迴環位置' in msg.data and '請原地' in msg.data
 
 
 def on_goal(msg):
@@ -77,6 +86,8 @@ def render():
 
 
 def render_target(x, y, z, yaw, gx, gy, gz, gyaw, is_slc):
+    if is_slc and slc_measuring and math.sqrt((gx - x) ** 2 + (gy - y) ** 2 + (gz - z) ** 2) <= 1.0:
+        return '\033[1;95m【方向】SLC 量測中：原地慢慢轉一整圈（相機離點 1 m 內都算），等結果\033[0m'
     dist = math.hypot(gx - x, gy - y)
     dz = gz - z
     # The planner's reached test is the 3D distance (handheld_fsm.cpp), so a
@@ -114,6 +125,7 @@ def main():
     rospy.init_node('handheld_direction_guide', anonymous=True, disable_signals=True)
     rospy.Subscriber(ODOM, Odometry, on_odom, queue_size=1)
     rospy.Subscriber(GOAL, Marker, on_goal, queue_size=1)
+    rospy.Subscriber(STATUS, String, on_status, queue_size=1)
     last, drawn = None, 0.0
     while not rospy.is_shutdown():
         line = render()
