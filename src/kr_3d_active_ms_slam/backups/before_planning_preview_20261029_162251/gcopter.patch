@@ -1,0 +1,21 @@
+diff --git a/gcopter/include/misc/visualizer.hpp b/gcopter/include/misc/visualizer.hpp
+index 5b7b274..98add9e 100644
+--- a/gcopter/include/misc/visualizer.hpp
++++ b/gcopter/include/misc/visualizer.hpp
+@@ -46,11 +46,11 @@ public:
+     Visualizer(ros::NodeHandle &nh_, const std::string& fid)
+         : nh(nh_)
+     {
+-        routePub = nh.advertise<visualization_msgs::Marker>("/visualizer/route", 10);
+-        wayPointsPub = nh.advertise<visualization_msgs::Marker>("/visualizer/waypoints", 10);
+-        trajectoryPub = nh.advertise<visualization_msgs::Marker>("/visualizer/trajectory", 10);
+-        meshPub = nh.advertise<visualization_msgs::Marker>("/visualizer/mesh", 1000);
+-        edgePub = nh.advertise<visualization_msgs::Marker>("/visualizer/edge", 1000);
++        routePub = nh.advertise<visualization_msgs::Marker>("/visualizer/route", 10, true);
++        wayPointsPub = nh.advertise<visualization_msgs::Marker>("/visualizer/waypoints", 10, true);
++        trajectoryPub = nh.advertise<visualization_msgs::Marker>("/visualizer/trajectory", 10, true);
++        meshPub = nh.advertise<visualization_msgs::Marker>("/visualizer/mesh", 1000, true);
++        edgePub = nh.advertise<visualization_msgs::Marker>("/visualizer/edge", 1000, true);
+         spherePub = nh.advertise<visualization_msgs::Marker>("/visualizer/spheres", 1000);
+         speedPub = nh.advertise<std_msgs::Float64>("/visualizer/speed", 1000);
+         thrPub = nh.advertise<std_msgs::Float64>("/visualizer/total_thrust", 1000);

@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="rviz" type="rviz" name="planning_preview_rviz" args="-d $(find exploration_manager)/config/real_robot_d435i.rviz" output="log"/>
+</launch>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- This server uses compiled defaults and reads no ROS parameters.
+         The referenced config/loop_closure.yaml was absent from the source. -->
+    <node pkg="loop_closure" type="loop_closure_server_node" name="loop_closure_server_node" output="screen">
+    </node>
+
+</launch>

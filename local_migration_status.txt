@@ -1,0 +1,92 @@
+Migration status: 2026-11-05
+
+Completed:
+- Ubuntu 20.04.6 x86_64, ROS Noetic, catkin_tools 0.9.4 installed.
+- Outer archive and all three source archives passed SHA256 verification.
+- Three source workspaces restored under /home/evil1323.
+- fmt 8.0.0, glog 0.6.0, Ceres 2.0.0 at the README commit,
+  Sophus at 49a7e128, GTSAM 4.0.3 installed in ~/.local/opt/active-slam.
+- RealSense ROS SDK 2.50.0 installed. Original machine also had standalone
+  SDK 2.58.4; hardware compatibility remains to be tested on this machine.
+- RealSense workspace: both packages built successfully.
+- VINS workspace: all four source packages built successfully.
+- ActiveSLAM workspace: all 46 source packages built successfully.
+  Four packages emitted warnings in the final incremental build; see logs.
+- ldd found no missing libraries for vins_node, loop_fusion_node,
+  sloam_active_slam_input_node, planning_preview_node and RealSense wrapper.
+- Preview launch resolves only /planning_preview_node, with
+  /planning_preview_node/fsm/planning_only=true.
+
+Migration fixes:
+- Fixed clone/checkout handling in installer.
+- Documented rosdep exceptions for source-built dependencies and unused
+  legacy local_sensing declarations (svo_msgs, vikit_ros).
+- Preserved Catkin workspace dependency search paths in build script.
+- Preserved all three independently built workspaces when sourcing setup.
+- Reused existing glog::glog target in SLOAM when provided by Ceres.
+- Linked loop_closure library publicly to its required GTSAM target.
+- Updated only VINS output_path and pose_graph_save_path to this home
+  directory. Original configuration saved under setup/.
+
+Remaining:
+- Python runtime installation and verification completed.
+  Imports passed for rospy/tf/cv_bridge/ros_numpy/numpy/scipy/sklearn/Open3D/
+  OpenCV/PyTorch/torchvision/Ultralytics. Depth image conversion round trip,
+  torchvision NMS, and bundled YOLO segmentation model loading passed.
+  Dependency check passes except two explicitly recorded Ubuntu metadata
+  version strings (distro-info and python-debian); see Python check log.
+- Official SDK 2.50.0 RealSense USB access rules installed and verified
+  against the downloaded copy. SHA256:
+  d573f5b264f62fb6e2e2407048a613c0351aa5a525c3a14946b116da9347d45e
+- Reconnect the camera, then validate kernel/IMU and camera hardware.
+  No hardware nodes, planning triggers or UAV controls have been started.
+
+Environment:
+  source ~/Desktop/ActiveSLAM_move2Laptop/setup/source_active_slam.bash
+
+Logs:
+  setup/active_slam_build_success.log
+  setup/workspace_build_details.log
+  setup/realsense_verified.log
+  setup/planning_preview_resolved_params.yaml
+
+Hardware validation 2026-11-05:
+- Stereo IR streams ~30 Hz, IMU 200.01 Hz confirmed from user-run checks.
+- VINS initialization and ~15 Hz odometry confirmed.
+- Full planning-only pipeline started; semantic inference and cloud processing observed.
+- Latest session 20261105_153427_11140: no map boundary errors or process death in reviewed log.
+- Loop closure server process started via complete_runtime_check.sh.
+- One startup Motion Module warning remains recorded; subsequent IMU check passed.
+- Preview start has not been triggered; no UAV controllers started.
+- Full launcher now includes loop closure; removed nonexistent, unused loop closure YAML reference.
+
+Authoritative version correction from user, 2026-11-05:
+- Target is legacy single-shot FSM: real_robot_planning_sunny.launch.
+- RViz: real_robot_rviz.launch -> original real_robot.rviz.
+- Safety param: /exploration_node/fsm/planning_only=true.
+- Trigger: /sunny_mapping_test/disabled_waypoints (nav_msgs/Path), not RViz 2D Nav Goal.
+- New start_legacy_planning_only.sh prepared and statically validated.
+- start_all_planning_only.sh now forwards to legacy startup by default.
+- Runtime switch not performed by agent: localhost ROS access remains blocked.
+
+Legacy planning result correction and visualization fix:
+- Trigger at ROS time 1793870101.5040631 produced a Global COP route
+  and position trajectory, but yaw feasibility failed: peak acceleration
+  5.28727 exceeds limit 2.04204. EXPL_RESULT::FAIL=1, not SUCCEED.
+- FINISH alone does not imply success. Earlier assistant success claim corrected.
+- RViz already subscribes to /planning_vis/viewpoints with global_tour enabled.
+- Added global candidate visualization before planning-only failure exit,
+  preserving FAIL status and all dynamic/safety limits. No trajectory commands added.
+- exploration_manager rebuilt successfully (warnings retained in build log).
+- Updated binary not yet loaded in the running planner; use
+  setup/restart_legacy_planner.sh, preserving camera/VINS/SLOAM.
+
+VINS divergence investigation:
+- Sample 20261105_173606: stereo ~29.98 Hz, IMU ~199.96 Hz; no nonmonotonic timestamps.
+- Left/right stamps coincide; live rectified intrinsics exactly match YAML; baseline ~0.0500544 m.
+- Saved IR images contain dense projected dot pattern: leading visual-tracking hypothesis, not proven cause.
+- Sample gyro peak ~193 deg/s; rapid motion may also challenge tracking.
+- Inherited VINS failureDetection() begins with return false; no protection changes made.
+- Optional emitter-off diagnostic startup prepared via ACTIVE_SLAM_DISABLE_IR_EMITTER=true.
+  VINS prefix disables emitter before starting estimator; default mode remains unchanged.
+  Emitter-off depth quality must be checked before interpreting mapping/planning.

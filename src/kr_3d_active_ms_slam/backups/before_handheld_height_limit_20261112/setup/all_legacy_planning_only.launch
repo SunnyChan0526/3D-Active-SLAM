@@ -1,0 +1,57 @@
+<launch>
+  <arg name="handheld_auto" default="false"/>
+  <arg name="start_camera" default="true"/>
+  <arg name="start_vins" default="true"/>
+  <arg name="start_sloam" default="true"/>
+  <arg name="start_loop" default="true"/>
+  <arg name="start_semantic" default="true"/>
+  <arg name="start_cloud" default="true"/>
+  <arg name="start_cop" default="true"/>
+  <arg name="start_planner" default="true"/>
+  <arg name="start_rviz" default="true"/>
+  <arg name="disable_ir_emitter" default="false"/>
+  <arg name="semantic_cpu_threads" default="0"/>
+  <arg name="semantic_cpu_nice" default="0"/>
+
+  <include if="$(arg start_camera)" file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="enable_color" value="true"/>
+    <arg name="color_width" value="640"/>
+    <arg name="color_height" value="480"/>
+    <arg name="color_fps" value="30"/>
+    <arg name="enable_depth" value="true"/>
+    <arg name="depth_width" value="640"/>
+    <arg name="depth_height" value="480"/>
+    <arg name="depth_fps" value="30"/>
+    <arg name="enable_infra" value="true"/>
+    <arg name="enable_infra1" value="true"/>
+    <arg name="enable_infra2" value="true"/>
+    <arg name="infra_width" value="640"/>
+    <arg name="infra_height" value="480"/>
+    <arg name="infra_fps" value="30"/>
+    <arg name="enable_gyro" value="true"/>
+    <arg name="enable_accel" value="true"/>
+    <arg name="unite_imu_method" value="linear_interpolation"/>
+    <arg name="align_depth" value="true"/>
+  </include>
+  <!-- Optional VIO diagnostic: projected IR dots may impair feature tracking.
+       Camera calibration and estimator parameters are left unchanged. -->
+  <node if="$(arg start_vins)" pkg="vins" type="vins_node" name="vins_estimator"
+        launch-prefix="$(env HOME)/Desktop/ActiveSLAM_move2Laptop/setup/vins_launch_prefix.sh $(arg disable_ir_emitter)"
+        args="$(env HOME)/vins_ws/src/VINS-Fusion/config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
+  <include if="$(arg start_loop)" file="$(find loop_closure)/launch/loop_closure_node.launch"/>
+  <include if="$(arg start_sloam)" file="$(find sloam)/launch/run_indoor_large_scale_exploration_sunny.launch">
+    <arg name="enable_rviz" value="false"/>
+  </include>
+  <include if="$(arg start_semantic)" file="$(find rgb_sem_segmentation)/launch/rgb_segmentation_real_robot_sunny.launch">
+    <arg name="cpu_threads" value="$(arg semantic_cpu_threads)"/>
+    <arg name="cpu_nice" value="$(arg semantic_cpu_nice)"/>
+  </include>
+  <include if="$(arg start_cloud)" file="$(find scan2shape_launch)/launch/real_robot_process_cloud_node.launch">
+    <arg name="odom_topic" value="/vins_estimator/odometry"/>
+  </include>
+  <include if="$(arg start_cop)" file="$(find exploration_manager)/launch/global_plan_server.launch"/>
+  <include if="$(arg start_planner)" file="$(find exploration_manager)/launch/real_robot_planning_sunny.launch">
+    <arg name="handheld_auto" value="$(arg handheld_auto)"/>
+  </include>
+  <include if="$(arg start_rviz)" file="$(find exploration_manager)/launch/real_robot_rviz.launch"/>
+</launch>

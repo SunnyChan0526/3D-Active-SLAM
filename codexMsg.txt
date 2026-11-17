@@ -1,0 +1,17 @@
+已建立可帶到新電腦的 570 MB 移植包，含主專案、VINS-Fusion（包括未提交修改與 D435i 校正設定）、RealSense ROS source、版本清單和建置手冊。沒有封裝 Ubuntu/ROS 二進位、舊機的 build/devel 或執行期地圖；新機需重新安裝系統與 ROS 套件，再編譯 workspace。
+
+- 下載移植包 (/tmp/kr3d_migration_20261103_161146.tar)
+- 下載校驗碼 (/tmp/kr3d_migration_20261103_161146.tar.sha256)
+- 新 Ubuntu 移植與建置手冊 (exploration_planner/planner/exploration_manager/docs/new_ubuntu_migration.md)
+- 匯出腳本 (scripts/export_migration_bundle.sh)
+
+把 .tar 和 .sha256 一起複製到新電腦後，在同一個目錄執行：
+
+sha256sum -c kr3d_migration_20261103_161146.tar.sha256
+tar -xf kr3d_migration_20261103_161146.tar
+
+解開後先讀 new_ubuntu_migration.md，照步驟安裝環境、解開三個 source archive，再分別建置。也可以把手冊中的「交給新環境 Codex 的任務文字」貼給 Codex，讓它先盤點並列出安裝需求。
+
+請留意：ROS Noetic 和 Ubuntu 20.04 已於 2025 年 5 月 31 日結束標準支援；新機安裝時可能需要封存套件來源。ROS Noetic EOL 說明。建置後維持 fsm/planning_only=true，不要啟動 UAV 控制型節點。
+
+封裝校驗已通過。git diff --check 指出工作區內既有修改有尾端空白；我沒有為了移植清理那些與此任務無關的檔案，也沒有在新環境執行建置。

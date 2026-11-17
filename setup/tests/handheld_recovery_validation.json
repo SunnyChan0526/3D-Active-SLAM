@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-11-12T15:05:05.633370+08:00",
+  "build": "passed",
+  "launch_handheld_resolution_m": 0.1,
+  "launch_manual_resolution_m": 0.02,
+  "search_budget_seconds": 0.2,
+  "safety_inflation_and_dynamics": "unchanged",
+  "regressions": {
+    "feedback_policy": "passed",
+    "manager_recovery_and_progress": "passed",
+    "actual_astar_collision_fixture": "passed",
+    "cli": "passed"
+  },
+  "live_camera_after_fix": {
+    "session": "20261112_150915",
+    "local_success_calls": 181,
+    "failed_calls": 1,
+    "recovered_after_single_failure": true,
+    "legacy_random_rotation_events": 0,
+    "observed_targets": 0,
+    "four_consecutive_failures_skip_live": "not_exercised",
+    "assessment": "partial validation: continuous replanning/retry verified; full target-progress exploration not verified"
+  },
+  "original_failed_room_occupancy_replay": "unavailable; occupancy snapshots not recorded"
+}

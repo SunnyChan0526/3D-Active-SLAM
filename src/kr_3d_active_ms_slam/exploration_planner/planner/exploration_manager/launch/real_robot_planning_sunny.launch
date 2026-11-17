@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="handheld_auto" default="false"/>
+  <arg name="handheld_height_limit" default="false"/>
+  <arg name="handheld_z_min" default="0.1"/>
+  <arg name="handheld_z_max" default="0.4"/>
+  <arg name="handheld_z_samples" default="3"/>
+  <!-- Real D435i mapping test -->
+  <arg name="mapper_config"
+       default="$(find exploration_manager)/config/mapper_sunny.yaml"/>
+
+  <arg name="traj_planner_config"
+     default="$(find gcopter)/config/gcopter_real_robot.yaml"/>
+
+  <include file="$(find exploration_manager)/launch/algorithm.xml">
+  
+    <arg name="planning_only" value="true"/>
+    <arg name="handheld_auto" value="$(arg handheld_auto)"/>
+    <arg name="handheld_height_limit" value="$(arg handheld_height_limit)"/>
+    <arg name="handheld_z_min" value="$(arg handheld_z_min)"/>
+    <arg name="handheld_z_max" value="$(arg handheld_z_max)"/>
+    <arg name="handheld_z_samples" value="$(arg handheld_z_samples)"/>
+
+    <!-- Mapping parameters -->
+    <arg name="mapper_config" value="$(arg mapper_config)"/>
+    <arg name="traj_planner_config" value="$(arg traj_planner_config)"/>
+
+    <!-- SLAM and VIO -->
+    <arg name="slam_odom_topic"
+         value="/factor_graph_atl/quadrotor/high_freq_odom"/>
+
+    <arg name="vio_odom_topic"
+         value="/vins_estimator/odometry"/>
+
+    <arg name="frame_id" value="world"/>
+
+    <!-- D435i depth -->
+    <arg name="depth_topic"
+         value="/camera/depth/image_rect_raw"/>
+
+    <!-- Not used for pose_type = 2 -->
+    <arg name="sensor_pose_topic"
+         value="/unused_mapping_sensor_pose"/>
+
+    <arg name="cloud_topic"
+         value="/unused_mapping_cloud"/>
+
+    <!-- Isolate test from real UAV commands -->
+    <arg name="waypoints_topic"
+         value="/sunny_mapping_test/disabled_waypoints"/>
+
+    <arg name="tracker_topic"
+         value="/sunny_mapping_test/disabled_tracker_cmd"/>
+
+    <arg name="srv_name"
+         value="/sunny_mapping_test/disabled_tracker_service"/>
+
+    <arg name="line_tracker_topic"
+         value="/sunny_mapping_test/disabled_line_tracker"/>
+
+    <arg name="service_transition_topic"
+         value="/sunny_mapping_test/disabled_transition"/>
+
+    <arg name="max_vel" value="1.0"/>
+    <arg name="max_acc" value="2.0"/>
+
+  </include>
+
+</launch>

@@ -1,0 +1,21 @@
+<launch>
+    <arg name="cpu_threads" default="0"/>
+    <arg name="cpu_nice" default="0"/>
+
+    <node name="rgb_sem_segmentation" pkg="rgb_sem_segmentation" type="detect.py" output="screen" launch-prefix="nice -n $(arg cpu_nice)">
+        <param name="cpu_threads" value="$(arg cpu_threads)" type="int"/>
+        <param name="~sim" value="false"/>
+        <param name="~desired_rate" value="2"/>
+        <param name="~rgb_topic" value="/camera/color/image_raw"/>
+        <param name="~aligned_depth_topic" value="/camera/aligned_depth_to_color/image_raw"/>
+        <param name="~odom_topic" value="/vins_estimator/odometry"/>
+        <param name="~sync_odom_measurements" value="true"/>
+        <remap from="~sync_pc_odom_topic" to="/sem_detection/sync_pc_odom"/>
+        <param name="~fx" value="606.4756469726562"/>
+        <param name="~fy" value="606.0856323242188"/>
+        <param name="~cx" value="327.30908203125"/>
+        <param name="~cy" value="253.45916748046875"/>
+
+    </node>
+
+</launch>

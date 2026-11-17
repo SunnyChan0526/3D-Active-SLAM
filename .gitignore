@@ -1,0 +1,37 @@
+# --- catkin build outputs (should never be in src, but just in case) ---
+build/
+devel/
+logs/
+install/
+.catkin_tools/
+
+# --- large binaries: models / bags / maps ---
+*.pt
+*.pth
+*.onnx
+*.engine
+*.bag
+*.bag.active
+setup/**/*.pcd
+setup/**/*.ply
+
+# --- python / editor junk ---
+__pycache__/
+*.pyc
+.idea/
+
+# --- migration bundle (superseded by this repo) ---
+kr3d_migration_*/
+kr3d_migration_*.tar
+kr3d_migration_*.tar.sha256
+
+# --- run-time data and logs under setup/ ---
+*.log
+setup/runs/
+setup/vins_full_pipeline_tests/
+setup/vins_isolated_tests/
+setup/vins_replay_tests/
+setup/vins_sensor_checks/
+setup/video_analysis_*/
+setup/report_archive_*/
+setup/auto_mapping_checks/

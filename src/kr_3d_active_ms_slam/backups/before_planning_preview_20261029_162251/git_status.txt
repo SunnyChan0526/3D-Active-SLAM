@@ -1,0 +1,40 @@
+ m GCOPTER_F250
+ M exploration_planner/planner/exploration_manager/config/gazebo_sloam.rviz
+ M exploration_planner/planner/exploration_manager/config/real_robot.rviz
+ M exploration_planner/planner/exploration_manager/include/exploration_manager/ms_exploration_fsm.h
+ M exploration_planner/planner/exploration_manager/launch/algorithm.xml
+ M exploration_planner/planner/exploration_manager/scripts/tmux_sim_slam.sh
+ M exploration_planner/planner/exploration_manager/src/ms_exploration_fsm.cpp
+ M exploration_planner/planner/exploration_manager/src/ms_exploration_manager.cpp
+ M exploration_planner/planner/plan_manage/src/planner_manager.cpp
+ M exploration_planner/planner/plan_manage/src/poly_opt.cpp
+ M exploration_planner/third_party/path_searching/src/astar2.cpp
+ M exploration_planner/third_party/traj_utils/include/traj_utils/planning_visualization.h
+ M exploration_planner/third_party/traj_utils/src/planning_visualization.cpp
+ M generic_sloam/scan2shape_launch/launch/real_robot_process_cloud_node.launch
+ M generic_sloam/scan2shape_launch/script/cuboid_utils.py
+ M generic_sloam/scan2shape_launch/script/process_cloud_node.py
+ M generic_sloam/scan2shape_launch/script/sklearn_matching_utils.py
+ M generic_sloam/sloam/CMakeLists.txt
+ M generic_sloam/sloam/src/core/activeSlamInputNode.cpp
+ M semantic_detection/rgb_sem_segmentation/src/detect.py
+?? backups/
+?? exploration_planner/planner/exploration_manager/config/mapper_sunny.yaml
+?? exploration_planner/planner/exploration_manager/include/exploration_manager/ms_exploration_fsm.h.before_planning_only
+?? exploration_planner/planner/exploration_manager/launch/algorithm.xml.before_planning_only
+?? exploration_planner/planner/exploration_manager/launch/algorithm_debug.xml
+?? exploration_planner/planner/exploration_manager/launch/real_robot_mapping_debug.launch
+?? exploration_planner/planner/exploration_manager/launch/real_robot_mapping_sunny.launch
+?? exploration_planner/planner/exploration_manager/launch/real_robot_planning_sunny.launch
+?? exploration_planner/planner/exploration_manager/src/ms_exploration_fsm.cpp.before_planning_only
+?? generic_sloam/scan2shape_launch/config/process_cloud_node_real_robot_sunny.yaml
+?? generic_sloam/scan2shape_launch/script/__pycache__/
+?? generic_sloam/scan2shape_launch/script/add_noise_to_ground_truth_odom_original.py
+?? generic_sloam/scan2shape_launch/script/cuboid_utils.py.bak
+?? generic_sloam/scan2shape_launch/script/process_cloud_node.py.bak_vins_frame
+?? generic_sloam/sloam/CMakeLists.txt.bak
+?? generic_sloam/sloam/launch/run_indoor_large_scale_exploration_sunny.launch
+?? generic_sloam/sloam/params/sloam_active_slam_sunny.yaml
+?? semantic_detection/rgb_sem_segmentation/launch/rgb_segmentation_real_robot_sunny.launch
+?? semantic_detection/rgb_sem_segmentation/models/
+?? semantic_detection/rgb_sem_segmentation/src/__pycache__/

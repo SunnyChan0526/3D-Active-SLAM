@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-11",
+  "build": "passed",
+  "feedback_policy_regression": "passed",
+  "manager_progress_and_frame_regression": "passed",
+  "automatic_and_manual_cli_regression": "passed",
+  "automatic_and_manual_launch_params": "passed",
+  "planning_only": true,
+  "live_camera_run": "not yet performed",
+  "entrypoint": "/home/evil1323/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh"
+}
