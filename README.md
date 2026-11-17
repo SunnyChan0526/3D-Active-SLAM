@@ -10,13 +10,15 @@ Monorepo containing the three catkin workspaces' sources plus setup/run scripts.
 | `setup/` | install / build / start / diagnose scripts and notes |
 
 Upstream origins and base commits: see [UPSTREAM.md](UPSTREAM.md).
+System overview and how to run: [docs/SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md).
+What to do next: [docs/next_steps_roadmap.md](docs/next_steps_roadmap.md).
 New-machine setup: see [new_ubuntu_migration.md](new_ubuntu_migration.md) and
 [local_migration_status.txt](local_migration_status.txt).
 
 ## Fresh clone
 
 ```bash
-git clone git@github.com:<user>/<repo>.git ~/Desktop/ActiveSLAM_move2Laptop
+git clone git@github.com:SunnyChan0526/3D-Active-SLAM.git ~/Desktop/ActiveSLAM_move2Laptop
 cd ~/Desktop/ActiveSLAM_move2Laptop
 ./scripts/download_models.sh          # yolov8x-seg.pt (not stored in git)
 mkdir -p ~/active_ms_slam_ws/src ~/vins_ws/src ~/realsense_ws/src
