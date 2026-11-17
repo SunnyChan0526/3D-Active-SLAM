@@ -21,6 +21,10 @@
   <arg name="slc_cluster_min_samples" default="4"/>
   <arg name="slc_max_key_pose_cluster_distance" default="7.0"/>
   <arg name="slc_min_key_pose_to_landmark" default="1.5"/>
+  <!-- SLC information gain weight f_sc in planActiveLoopClosurePath; 6 = author's value.
+       Raise only to test the SLC path; experiments use 6. -->
+  <arg name="slc_ig_weight" default="6.0"/>
+  <param name="/exploration_node/active_closure/ig_weight" value="$(arg slc_ig_weight)"/>
   <arg name="start_semantic" default="true"/>
   <arg name="start_cloud" default="true"/>
   <arg name="start_cop" default="true"/>

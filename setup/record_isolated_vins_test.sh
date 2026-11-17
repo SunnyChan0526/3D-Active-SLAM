@@ -68,7 +68,8 @@ launch_args+=("slc_floor_height:=${ACTIVE_SLAM_SLC_FLOOR_HEIGHT:-3.5}"
   "slc_cluster_distance:=${ACTIVE_SLAM_SLC_CLUSTER_DISTANCE:-3.5}"
   "slc_cluster_min_samples:=${ACTIVE_SLAM_SLC_CLUSTER_MIN_SAMPLES:-4}"
   "slc_max_key_pose_cluster_distance:=${ACTIVE_SLAM_SLC_MAX_KEY_POSE_CLUSTER_DISTANCE:-7.0}"
-  "slc_min_key_pose_to_landmark:=${ACTIVE_SLAM_SLC_MIN_KEY_POSE_TO_LANDMARK:-1.5}")
+  "slc_min_key_pose_to_landmark:=${ACTIVE_SLAM_SLC_MIN_KEY_POSE_TO_LANDMARK:-1.5}"
+  "slc_ig_weight:=${ACTIVE_SLAM_SLC_IG_WEIGHT:-6.0}")
 # Room bounds (optional): metres from the START position to each wall, using the
 # camera heading at start. VINS world: start heading = +Y, left = -X (checked on
 # four runs, 2026-11-17). Map boundary AND update box are both set so cells past

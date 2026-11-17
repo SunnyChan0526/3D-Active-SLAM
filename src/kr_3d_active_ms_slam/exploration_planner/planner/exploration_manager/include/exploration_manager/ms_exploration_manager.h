@@ -109,6 +109,7 @@ public:
   // Handheld Testing Mode, Option A (default off): reachable camera z range.
   bool handheld_height_limit_ = false;
   double handheld_z_min_ = 0.0, handheld_z_max_ = 0.0;
+  double closure_ig_weight_ = 6.0;
   bool handheldNeedsGlobalRefresh();
   bool handheldUnplannedClosure();
   int planHandheldClosureOnly(const Vector3d& graph_pos, const Vector3d& pos, const Vector3d& pos_slam,

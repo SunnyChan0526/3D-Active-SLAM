@@ -72,3 +72,4 @@ bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh
   1. 高度限制下，SLC key pose 的高度夾進 [z_min, z_max]，不再整個略過（起點 key pose 0 的 z＝0 會被夾到 z_min）；到達仍是真實 3D 0.5 m、成功仍需真實迴環量測。
   2. 新候選觸發：出現從未交給 COP 的候選 id 就重算，兩次間隔至少 10 秒（避免 id 跳動反覆重算）。
   3. 探索完（沒有 frontier）但仍有候選時，改為「只走 SLC」：一次一個、最近的優先、每個只試一次（`[Handheld SLC-only]`）。原作者只在 frontier 之間插入 SLC，小房間探索完就再也不會安排。
+- `ACTIVE_SLAM_SLC_IG_WEIGHT`（預設 6＝原作者寫死的 f_sc）：SLC 資訊增益的權重，啟動時會在 vins.log 印出 `SLC information gain weight f_sc`。**只用來驗證 SLC 流程**，正式實驗維持 6。`slc_summary.txt` 會列出 SLC 與 frontier 效用，可據此判斷要調多少。

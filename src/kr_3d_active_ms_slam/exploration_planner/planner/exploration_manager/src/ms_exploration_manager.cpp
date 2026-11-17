@@ -66,6 +66,9 @@ namespace ms_planner
     nh.param("exploration/classic", ep_->classic_, false);
     nh.param("fsm/handheld_auto", handheld_feedback_, false);
     nh.param("handheld_height/enable", handheld_height_limit_, false);
+    // Weight f_sc on the SLC information gain (author's hard-coded value: 6).
+    nh.param("active_closure/ig_weight", closure_ig_weight_, 6.0);
+    ROS_INFO("[Active Loop Closure] SLC information gain weight f_sc = %.2f", closure_ig_weight_);
     nh.param("handheld_height/z_min", handheld_z_min_, 0.0);
     nh.param("handheld_height/z_max", handheld_z_max_, 0.0);
     if (handheld_feedback_) {
@@ -1496,7 +1499,7 @@ namespace ms_planner
           // Process the result
           if (srv.response.success) {
             ROS_INFO_STREAM("[Plan Active Closure]" << " Info gain: " << srv.response.information_gain);
-            info_closure = srv.response.information_gain * 6; // The weighting f_sc to balance the scale of IG.
+            info_closure = srv.response.information_gain * closure_ig_weight_; // f_sc, author's value 6
           } else {
             info_closure = -1;
           }
