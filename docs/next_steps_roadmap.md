@@ -2,7 +2,7 @@
 
 > 建立：2026-11-16｜更新：2026-11-17 晚，PR #1 合併進 main（merge commit `314d3ae`）之後
 > 原則：全程維持 `fsm/planning_only=true`；不為了 demo 放寬碰撞、膨脹半徑或動態限制。
-> 搭配 [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)（系統說明與已知限制）、RELATED_PAPERS.md（文獻與閱讀順序）一起看。這份只放待辦與進度。
+> 搭配 [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)（系統說明與已知限制）、[RELATED_PAPERS.md](RELATED_PAPERS.md)（文獻與閱讀順序）一起看。這份只放待辦與進度。
 
 ## 11-17 實機測試後的結論（main `314d3ae`）
 - ✅ **SLC 端到端第一次真實成功**（`20261117_174344`，`clo96`）：候選 → COP 評估 → 排入路線 → 走到點、原地轉 → 比對成功 → `[Handheld Observed] clo96` → 因子圖加入迴環（`WILL ADD loop closure factor`）→ SLAM 位姿修正。
@@ -68,7 +68,7 @@
 - [ ] 硬體：用 Kalibr 做相機與 IMU 的標定、時間同步、減震安裝方式。
 
 ## 步驟 6｜論文主軸（同時進行）
-- [ ] 照 RELATED_PAPERS.md 的建議順序讀：Tao → RAVEN → Region-Based → Perception-Aware；Related Work 優先引用 Placed et al.（T-RO 2023）。
+- [ ] 照 [RELATED_PAPERS.md](RELATED_PAPERS.md) 的建議順序讀：Tao → RAVEN → Region-Based → Perception-Aware；Related Work 優先引用 Placed et al.（T-RO 2023）。
 - [ ] 優先確認那篇 ⚠️ 的《Perception-aware active SLAM for MAVs》（*Aerospace* 2025），它和 RAVEN 的主題很接近，可能會撞題。
 - [ ] **重規劃條件**：論文 VI-B 是「或」，原作者程式與目前手持模式是「且」。檢查 frontier 變化比例的算法（`evaPlannedFrontierChanged`／`isFrontierChanged`，手持時任何一格更新就算整個 frontier 變化），修好後改回論文的「或」；寫論文時要說明採用哪一種。
 - [ ] 效用權重：`* 6` 是 f_sc，現在是參數 `active_closure/ig_weight`。先對照論文公式。11-17 實測佐證兩個疑點：frontier 效用有除以距離、SLC 效用沒有；SLC 效用隨時間累積的不確定度從約 0 漲到 60（權重 6）。選了之後會 `i++` 也仍需確認（可到原作者 GitHub 開 issue）。確認後再加入 RAVEN 的 λ 參數。
