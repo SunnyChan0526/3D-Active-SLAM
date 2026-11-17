@@ -33,21 +33,21 @@ class LoopClosureSubmapNode(object):
 
         ###################################### MOST IMPORANT PARAMETERS ######################################
         # assumed floor height (should be similar to the actual floor height)
-        self.floor_height = 3.5
+        self.floor_height = rospy.get_param('~floor_height', 3.5)
         # dilation of floor height (so that even if the robot drifted the landmark and robot pose can be considered to be on the right floor)
-        self.floor_height_dilation = 0.5 # up and down, each side
+        self.floor_height_dilation = rospy.get_param('~floor_height_dilation', 0.5) # up and down, each side
 
         # most important DBSCAN parameters
-        self.cluster_distance = 3.5 # eps
+        self.cluster_distance = rospy.get_param('~cluster_distance', 3.5) # eps
         # number of landmarks to be regarded as a candidate loop closure cluster
-        self.cluster_min_samples = 4
+        self.cluster_min_samples = int(rospy.get_param('~cluster_min_samples', 4))
         # For the following two params, do not worry about landmarks from different floor, they should already be filtered out
         # max distance (in XYZ) between robot key pose and loop closure candidate clustould be similar to sensor perception range
-        self.max_key_pose_cluster_distance = 7.0
+        self.max_key_pose_cluster_distance = rospy.get_param('~max_key_pose_cluster_distance', 7.0)
         # min_key_pose_to_landmark: minimum distance (in XYZ) from the sampled loop closure key pose to ANY landmark in the cluster 
-        self.min_key_pose_to_landmark = 1.5
+        self.min_key_pose_to_landmark = rospy.get_param('~min_key_pose_to_landmark', 1.5)
         # additional distance from closest robot key pose so as to find a better (older) key pose
-        self.allowed_distance_to_closest_robot_key_pose = 3.0
+        self.allowed_distance_to_closest_robot_key_pose = rospy.get_param('~allowed_distance_to_closest_robot_key_pose', 3.0)
         #################################### MOST IMPORANT PARAMETERS ENDS ###################################
 
         # create random but distinct color options for loop closure submaps within 0-1 range
@@ -57,6 +57,13 @@ class LoopClosureSubmapNode(object):
         for cur_color in colors:
             self.loop_closure_submap_colors.append(mcolors.hex2color(color_lookup_table[cur_color]))
         
+        rospy.loginfo("[loop_closure_submap_node] floor_height=%.2f dilation=%.2f cluster_distance=%.2f "
+                      "cluster_min_samples=%d max_key_pose_cluster_distance=%.2f min_key_pose_to_landmark=%.2f "
+                      "allowed_distance_to_closest_robot_key_pose=%.2f",
+                      self.floor_height, self.floor_height_dilation, self.cluster_distance, self.cluster_min_samples,
+                      self.max_key_pose_cluster_distance, self.min_key_pose_to_landmark,
+                      self.allowed_distance_to_closest_robot_key_pose)
+
         # reference frame
         self.reference_frame = rospy.get_param('~reference_frame', "quadrotor/map")
 

@@ -58,6 +58,12 @@ launch_args+=("handheld_auto:=${ACTIVE_SLAM_HANDHELD_AUTO:-false}")
 launch_args+=("handheld_height_limit:=${ACTIVE_SLAM_HANDHELD_HEIGHT_LIMIT:-false}"
   "handheld_z_min:=${ACTIVE_SLAM_HANDHELD_Z_MIN:-0.1}" "handheld_z_max:=${ACTIVE_SLAM_HANDHELD_Z_MAX:-0.4}"
   "handheld_z_samples:=${ACTIVE_SLAM_HANDHELD_Z_SAMPLES:-3}")
+# Semantic loop closure candidate parameters (defaults = author's original values).
+launch_args+=("slc_floor_height:=${ACTIVE_SLAM_SLC_FLOOR_HEIGHT:-3.5}"
+  "slc_cluster_distance:=${ACTIVE_SLAM_SLC_CLUSTER_DISTANCE:-3.5}"
+  "slc_cluster_min_samples:=${ACTIVE_SLAM_SLC_CLUSTER_MIN_SAMPLES:-4}"
+  "slc_max_key_pose_cluster_distance:=${ACTIVE_SLAM_SLC_MAX_KEY_POSE_CLUSTER_DISTANCE:-7.0}"
+  "slc_min_key_pose_to_landmark:=${ACTIVE_SLAM_SLC_MIN_KEY_POSE_TO_LANDMARK:-1.5}")
 launch_args+=("semantic_cpu_threads:=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}"
   "semantic_cpu_nice:=${ACTIVE_SLAM_SEMANTIC_NICE:-0}")
 echo "Semantic CPU settings: threads=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}, nice=${ACTIVE_SLAM_SEMANTIC_NICE:-0}"
@@ -88,12 +94,29 @@ rosnode list >/dev/null
 # an emergency cap; normally recording stops explicitly after the full guide.
 record_args=(--duration=300)
 if [[ "$test_mode" == free ]]; then
-  # A rolling buffer only removes this session's oldest split bags.
-  record_args=(--split --size=1024 --max-splits=4 --repeat-latched)
+  if [[ "${ACTIVE_SLAM_RECORD_FULL:-false}" == true ]]; then
+    # Experiment runs: keep the whole session (start pose is needed for
+    # return-to-start drift). Still split into 1 GB files; nothing is deleted.
+    record_args=(--split --size=1024 --repeat-latched)
+    echo "Recording: FULL session kept (ACTIVE_SLAM_RECORD_FULL=true)."
+  else
+    # A rolling buffer only removes this session's oldest split bags.
+    record_args=(--split --size=1024 --max-splits=4 --repeat-latched)
+  fi
+fi
+# Color + aligned depth let the semantic pipeline (YOLO, cloud processing,
+# SLOAM object factors) be replayed offline. Large: roughly 25-45 MB/s.
+semantic_topics=()
+if [[ "${ACTIVE_SLAM_RECORD_SEMANTIC:-false}" == true ]]; then
+  semantic_topics=(/camera/color/image_raw /camera/color/camera_info
+    /camera/aligned_depth_to_color/image_raw /camera/aligned_depth_to_color/camera_info
+    /factor_graph_atl/loop_closure_submap)
+  echo "Recording: semantic replay topics included (ACTIVE_SLAM_RECORD_SEMANTIC=true)."
 fi
 rosbag record --lz4 --min-space=2G "${record_args[@]}" -O "$run_dir/sensors.bag" \
   /camera/imu /camera/infra1/image_rect_raw /camera/infra2/image_rect_raw \
   /camera/infra1/camera_info /camera/infra2/camera_info /tf_static /tf \
+  "${semantic_topics[@]}" \
   /vins_estimator/odometry /vins_estimator/imu_propagate \
   /vins_estimator/point_cloud /vins_estimator/keyframe_point /rosout \
   /factor_graph_atl/quadrotor/high_freq_odom \

@@ -47,3 +47,17 @@ bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh
 ### 2026-11-12：失敗恢復與搜尋網格
 
 手持模式的 A* 網格改為 0.1 m，對齊目前局部地圖；時間預算保持 0.2 秒。局部規劃連續四次失敗時會略過該目標，並明確提示「不計為完成觀察」，再嘗試後續目標。失敗計數不再沿用到新目標。局部失敗／掃描提示與真正 COP 等待已分離，避免舊版旋轉恢復分支造成反覆假逾時。安全膨脹與動態限制保留；此變更不保證每個探索目標都可達。詳見 `tests/handheld_recovery_change.md`。
+
+### 2026-11-17：接上語意迴環候選、可錄語意重播資料
+
+- `all_legacy_planning_only.launch` 新增 `loop_closure_submap_node.py`（`start_loop_candidates`，預設跟隨 `start_loop`）。之前沒有啟動它，`/factor_graph_atl/loop_closure_submap` 沒有發布者，規劃器的 `loop_closure_ids_` 一直是空的，所以從來不會選中 SLC 目標。
+- 候選參數改成 ROS param，預設值與原作者寫死的值相同（大樓多樓層尺度）。手持小場地可用環境變數調整，例如：
+  `ACTIVE_SLAM_SLC_CLUSTER_MIN_SAMPLES=3 ACTIVE_SLAM_SLC_CLUSTER_DISTANCE=2.0 ACTIVE_SLAM_SLC_MAX_KEY_POSE_CLUSTER_DISTANCE=4.0`
+  （論文寫每群至少 3 個物件，程式原值為 4）。
+- 驗證：`rostopic echo -n1 /factor_graph_atl/loop_closure_submap`；vins.log 應出現 `Loop closure submap callback` 與 `[Plan Active Closure] Closure Utility`。
+- 錄製選項（預設行為不變）：
+  - `ACTIVE_SLAM_RECORD_SEMANTIC=true`：加錄 color、aligned depth 及其 camera_info，可離線重播 YOLO／點雲／SLOAM。約 25–45 MB/s。
+  - `ACTIVE_SLAM_RECORD_FULL=true`：不滾動刪除，保留整輪（回起點漂移需要開頭資料）。注意磁碟空間。
+- 實驗用範例：
+  `ACTIVE_SLAM_RECORD_SEMANTIC=true ACTIVE_SLAM_RECORD_FULL=true bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh`
+- `planning_only=true`、避障與動態限制都未更動；尚未在實機上驗證。
