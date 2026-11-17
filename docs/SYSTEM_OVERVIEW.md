@@ -172,6 +172,8 @@ RViz 裡橘色箭頭是探索目標（`ftr`），紫色箭頭是 SLC 目標（`c
 
 ## 6. 參考文獻
 
+完整的論文整理、閱讀順序與每篇可以借用的地方見 [RELATED_PAPERS.md](RELATED_PAPERS.md)。
+
 | 論文 | 關係 |
 |---|---|
 | 3D Active Metric-Semantic SLAM（Tao，RA-L 2024，arXiv 2309.06950） | 本專案複現的對象；論文與程式差異整理在 `setup/PAPER_PLANNING_AUDIT.md` |
