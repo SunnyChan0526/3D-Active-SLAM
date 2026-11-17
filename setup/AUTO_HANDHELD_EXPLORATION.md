@@ -61,3 +61,14 @@ bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh
 - 實驗用範例：
   `ACTIVE_SLAM_RECORD_SEMANTIC=true ACTIVE_SLAM_RECORD_FULL=true bash ~/Desktop/ActiveSLAM_move2Laptop/setup/start_auto_handheld_exploration.sh`
 - `planning_only=true`、避障與動態限制都未更動；尚未在實機上驗證。
+- 手持模式補上重算條件：目前路線規劃時沒有任何 SLC 候選、之後候選才出現，就要求一次全域 COP 重算（`[Handheld SLC]`）。只觸發一次，避免候選 id 在 key_pose_4／6 之間跳動時反覆重算；單一 frontier 捷徑會把當下候選記為已看過。需重新編譯 `exploration_manager`。
+- 自動紀錄：完整流程會在背景執行 `slc_monitor.py`，不用另開終端。終端只顯示【SLC】里程碑（節點啟動、首次候選、觸發重算、評估 SLC、插入 SLC 目標、成功／失敗）；完整時間軸寫在本輪資料夾的 `slc_events.log`，結束時把七步檢查結果寫進 `slc_summary.txt` 並顯示在終端。
+- 修正既有問題：手持模式在「需要重算」時，送出 COP 的程式只寫在 `!handheld_feedback_` 分支裡，所以目標還沒走完時從不送出，完成 10%、frontier 變化 15% 和 SLC 候選三個重算條件實際上都沒有作用。現在會繼續導向目前目標，同時送出 COP 請求（`[Handheld Refresh]`）。
+- 重算條件改回原作者無人機版：frontier 變化 ≥15% **且** 完成 ≥10% 才重算（另外保留 SLC 候選觸發與目標走完兩種情況）。原本的「或」在手持相機下每秒都會成立，造成 COP 約 1 Hz 重算、目標一直換。
+- 監控在目前目標變成 SLC 點時，會在終端用紫色提示位置。
+- 方向提示 `handheld_direction_guide.py`：終端最下面一行會持續更新，以相機目前朝向為基準顯示橘色目標的方向與距離（例如「↖ 目標在左前方 45°，距離 1.4 m」）；到 0.5 m 內改成提示原地轉幾度。位置與朝向用規劃器判斷到達的同一個 SLAM odometry（機體 x 軸＝相機前方，已用 bag 確認走路方向最接近 x 軸）。
+- 房間範圍（選用）：`ACTIVE_SLAM_ROOM_FRONT/BACK/LEFT/RIGHT` 為**起點**到前／後／左／右牆的公尺數（以啟動時相機朝向為前），會在本輪資料夾產生 `mapper_room.yaml`，把地圖邊界與更新範圍都設成房間＋`ACTIVE_SLAM_ROOM_MARGIN`（預設 0.3 m）。兩者都要縮，否則牆外格子是「未知」，邊界會一直產生 frontier。座標對應已用四輪 bag 確認：啟動朝向＝+Y、左＝-X。不設時沿用 `mapper_sunny.yaml`（12×11 m 場地）。
+- SLC 三項補強（手持模式）：
+  1. 高度限制下，SLC key pose 的高度夾進 [z_min, z_max]，不再整個略過（起點 key pose 0 的 z＝0 會被夾到 z_min）；到達仍是真實 3D 0.5 m、成功仍需真實迴環量測。
+  2. 新候選觸發：出現從未交給 COP 的候選 id 就重算，兩次間隔至少 10 秒（避免 id 跳動反覆重算）。
+  3. 探索完（沒有 frontier）但仍有候選時，改為「只走 SLC」：一次一個、最近的優先、每個只試一次（`[Handheld SLC-only]`）。原作者只在 frontier 之間插入 SLC，小房間探索完就再也不會安排。

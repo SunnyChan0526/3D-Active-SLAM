@@ -12,6 +12,9 @@
        /factor_graph_atl/loop_closure_submap has no publisher and the planner's
        loop_closure_ids_ stays empty, so no semantic loop closure target is ever planned.
        Defaults below equal the original hard-coded values (multi-floor building scale). -->
+  <!-- Planner map bounds; record_isolated_vins_test.sh swaps in a per-run room file
+       when ACTIVE_SLAM_ROOM_FRONT/BACK/LEFT/RIGHT are set. -->
+  <arg name="mapper_config" default="$(find exploration_manager)/config/mapper_sunny.yaml"/>
   <arg name="start_loop_candidates" default="$(arg start_loop)"/>
   <arg name="slc_floor_height" default="3.5"/>
   <arg name="slc_cluster_distance" default="3.5"/>
@@ -79,6 +82,7 @@
     <arg name="handheld_z_min" value="$(arg handheld_z_min)"/>
     <arg name="handheld_z_max" value="$(arg handheld_z_max)"/>
     <arg name="handheld_z_samples" value="$(arg handheld_z_samples)"/>
+    <arg name="mapper_config" value="$(arg mapper_config)"/>
   </include>
   <include if="$(arg start_rviz)" file="$(find exploration_manager)/launch/real_robot_rviz.launch"/>
 </launch>

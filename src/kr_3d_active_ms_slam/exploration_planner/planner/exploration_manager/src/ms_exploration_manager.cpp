@@ -193,6 +193,18 @@ namespace ms_planner
         int key_pose_id = stoi(marker.ns.substr(9)); // 8+1 since key_pose_i 
         loop_closure_ids_.push_back(key_pose_id);
         loop_closure_id_to_pose_[key_pose_id] = Eigen::Vector3d(marker.points[0].x, marker.points[0].y, marker.points[0].z);
+        if (handheld_feedback_ && handheld_height_limit_) {
+          // A key pose is a past camera pose (key pose 0 is the start, z = 0).
+          // Clamp it into the reachable band instead of dropping the SLC: the
+          // measurement re-observes the same object cluster, and the reached
+          // test is still the real 3D distance to this clamped goal.
+          double& z = loop_closure_id_to_pose_[key_pose_id](2);
+          const double clamped = std::min(std::max(z, handheld_z_min_), handheld_z_max_);
+          if (clamped != z) {
+            ROS_INFO("[Handheld Height] Closure key pose %d: z %.2f clamped to %.2f", key_pose_id, z, clamped);
+            z = clamped;
+          }
+        }
       }
       else if (marker.ns.find("submap_landmarks") != std::string::npos) 
       {
@@ -318,6 +330,11 @@ namespace ms_planner
           handheld_initial_ = 1;
           handheld_completed_ = 0;
           init_tour_len_ = 1;
+          // No COP runs here, so SLC insertion cannot happen; record the current
+          // candidates as seen so handheldUnplannedClosure() does not refresh-loop.
+          planned_closure_ids_ = loop_closure_ids_;
+          handheld_seen_closure_ids_.insert(loop_closure_ids_.begin(), loop_closure_ids_.end());
+          handheld_last_tour_time_ = ros::Time::now();
           transitGlobalPlanState(GLOBAL_PLAN_STATE::PLAN_RECV, "Handheld single frontier");
         }
         replan_next_pos_ = ed_->points_[0];
@@ -363,6 +380,13 @@ namespace ms_planner
 
       if (ed_->frontiers_.empty())
       {
+        if (handheld_feedback_) {
+          const int closure_status = planHandheldClosureOnly(graph_pos, pos, pos_slam, vel, acc, yaw, yaw_slam);
+          if (closure_status >= 0) {
+            mutex_.unlock();
+            return closure_status;
+          }
+        }
         ROS_WARN("[Plan Explore Motion COP::PLAN_RECV] No coverable frontier.");
         mutex_.unlock();
         return NO_FRONTIER;
@@ -381,7 +405,8 @@ namespace ms_planner
 
       const bool keep_global = handheld_feedback_
           ? !handheldGlobalRefresh(frontier_finder_->evaPlannedFrontierChanged(),
-                                   handheld_completed_, handheld_initial_, !active_slam_goal_indices_.empty())
+                                   handheld_completed_, handheld_initial_, !active_slam_goal_indices_.empty(),
+                                   handheldUnplannedClosure())
           : (active_slam_goal_indices_.size() > 0 &&
              (frontier_finder_->evaFrontierChanged() < 0.15 ||
               (init_tour_len_ > 0 && (double)active_slam_goal_indices_.size() / init_tour_len_ > 0.9)));
@@ -456,6 +481,21 @@ namespace ms_planner
             planned_ed_->closure_planned_ = false;
           }
           int plan_status = planBC(replan_next_pos_, replan_next_yaw_, pos, pos_slam, vel, acc, yaw, yaw_slam);
+          if (handheld_feedback_) {
+            // handheldGlobalRefresh() asked for a new tour while goals remain. The
+            // drone branches below only request COP after erasing a goal, which
+            // handheld mode never does here, so the refresh was never sent. Keep
+            // guiding to the current goal (REPLAN does) and request COP now.
+            ROS_WARN("[Handheld Refresh] Requesting global COP while keeping current goal %s",
+                     active_slam_goal_indices_[0].c_str());
+            copyEdToPlanning();
+            frontier_finder_->copyFrontierToPlanning();
+            frontier_finder_->global_tour_planned = false;
+            findGlobalTour(graph_pos, graph_vel, graph_yaw, ed_->info_gains_);
+            transitGlobalPlanState(GLOBAL_PLAN_STATE::REPLAN, "Handheld refresh");
+            mutex_.unlock();
+            return plan_status;
+          }
           if (!handheld_feedback_ && (plan_status == SUCCEED || plan_status == TARGET_ROTATE || plan_status == SUCCEED_AND_STAY)) {
             active_slam_goal_indices_.erase(active_slam_goal_indices_.begin());
             ROS_INFO_STREAM("PlanRECV: Current plan succeed, erase the goal");
@@ -539,6 +579,13 @@ namespace ms_planner
       frontier_finder_->getDormantFrontiers(ed_->dead_frontiers_);
       if (ed_->frontiers_.empty())
       {
+        if (handheld_feedback_) {
+          const int closure_status = planHandheldClosureOnly(graph_pos, pos, pos_slam, vel, acc, yaw, yaw_slam);
+          if (closure_status >= 0) {
+            mutex_.unlock();
+            return closure_status;
+          }
+        }
         ROS_WARN("[Plan Explore Motion COP::REPLAN] No coverable frontier.");
         mutex_.unlock();
         return NO_FRONTIER;
@@ -1202,6 +1249,9 @@ namespace ms_planner
       ROS_INFO_STREAM("[Handheld COP] Accepted refined tour with " << handheld_initial_ << " targets");
     }
     planned_closure_ids_ = tmp_keypose_ids;
+    handheld_seen_closure_ids_.insert(tmp_keypose_ids.begin(), tmp_keypose_ids.end());
+    handheld_last_tour_time_ = ros::Time::now();
+    handheld_unplanned_closure_logged_ = false;
     for (int i = 0; i < tmp_keypose_ids.size(); i++) {
       planned_closure_id_to_pose_[tmp_keypose_ids[i]] = tmp_keypose_poses[tmp_keypose_ids[i]];
       planned_closure_id_to_cluster_centroid_[tmp_keypose_ids[i]] = tmp_keypose_centroids[tmp_keypose_ids[i]];
@@ -1220,7 +1270,64 @@ namespace ms_planner
     std::lock_guard<std::mutex> lock(mutex_);
     if (global_plan_state_ != GLOBAL_PLAN_STATE::PLAN_RECV) return false;
     return handheldGlobalRefresh(frontier_finder_->evaPlannedFrontierChanged(),
-                                 handheld_completed_, handheld_initial_, !active_slam_goal_indices_.empty());
+                                 handheld_completed_, handheld_initial_, !active_slam_goal_indices_.empty(),
+                                 handheldUnplannedClosure());
+  }
+
+  // Caller holds mutex_. Exploration has no frontier left, so COP (which only
+  // inserts SLC between frontiers) will never schedule the remaining candidates.
+  // Guide to them one at a time, nearest first, each attempted once. Returns -1
+  // when there is nothing to do (caller then reports NO_FRONTIER as before).
+  int msExplorationManager::planHandheldClosureOnly(const Vector3d& graph_pos, const Vector3d& pos,
+      const Vector3d& pos_slam, const Vector3d& vel, const Vector3d& acc,
+      const Vector3d& yaw, const Vector3d& yaw_slam) {
+    const bool current = !active_slam_goal_indices_.empty() &&
+                         active_slam_goal_indices_[0].rfind("clo", 0) == 0;
+    if (!current) {
+      int best = -1;
+      double best_cost = 1e9;
+      for (int id : loop_closure_ids_) {
+        if (handheld_attempted_closure_ids_.count(id) || !loop_closure_id_to_pose_.count(id)) continue;
+        vector<Vector3d> path;
+        const double cost = ViewNode::computeCost(graph_pos, loop_closure_id_to_pose_[id], 0, 0,
+                                                  Vector3d(0, 0, 0), 0, path);
+        if (cost >= 10000) continue;  // not reachable from here
+        if (cost < best_cost) { best_cost = cost; best = id; }
+      }
+      if (best < 0) return -1;
+      handheld_attempted_closure_ids_.insert(best);
+      active_slam_goal_indices_ = {"clo" + std::to_string(best)};
+      planned_closure_id_to_pose_[best] = loop_closure_id_to_pose_[best];
+      planned_closure_id_to_cluster_centroid_[best] = loop_closure_id_to_cluster_centroid_[best];
+      ++handheld_generation_;
+      handheld_initial_ = 1;
+      handheld_completed_ = 0;
+      ROS_WARN("[Handheld SLC-only] No frontier left; guiding to closure key pose %d (cost %.2f)", best, best_cost);
+    }
+    std::cout << "goal_indices: " << active_slam_goal_indices_[0] << std::endl;
+    const int closure_idx = std::stoi(active_slam_goal_indices_[0].substr(3));
+    replan_next_pos_ = planned_closure_id_to_pose_[closure_idx];
+    replan_next_yaw_ = yaw[0];
+    planned_ed_->closure_idx_ = closure_idx;
+    planned_ed_->closure_set_ = true;
+    planned_ed_->closure_planned_ = false;
+    return planBC(replan_next_pos_, replan_next_yaw_, pos, pos_slam, vel, acc, yaw, yaw_slam);
+  }
+
+  // Caller holds mutex_.
+  bool msExplorationManager::handheldUnplannedClosure() {
+    // Refresh when a candidate id never offered to COP appears. Ids churn
+    // (e.g. 4 <-> 6), so "ever planned" plus a 10 s spacing bounds the refreshes.
+    bool fresh = false;
+    for (int id : loop_closure_ids_)
+      if (!handheld_seen_closure_ids_.count(id)) fresh = true;
+    const bool unplanned = fresh && (ros::Time::now() - handheld_last_tour_time_).toSec() >= 10.0;
+    if (unplanned && !handheld_unplanned_closure_logged_) {
+      ROS_WARN_STREAM("[Handheld SLC] " << loop_closure_ids_.size()
+                      << " closure candidate(s) appeared after the current tour was planned; requesting global COP refresh");
+      handheld_unplanned_closure_logged_ = true;
+    }
+    return unplanned;
   }
 
   bool msExplorationManager::handheldGoalCurrent(const std::pair<std::string, size_t>& token) {
@@ -1413,6 +1520,7 @@ namespace ms_planner
         }
       }
       ROS_WARN_STREAM("[Plan Active Closure]" << "Closure Utility: " << best_closure_utility); 
+      ROS_INFO_STREAM("[Active Loop Closure] FTR utility: " << utility_ftr << " (reward " << ftr_reward << ")");
       ROS_INFO_STREAM("[Active Loop Closure] FTR cost: " << tmp_cost_ftr);
       ROS_INFO_STREAM("[Active Loop Closure] Closure cost: " << best_closure_cost);
       ROS_INFO_STREAM("[Active Loop Closure] curr_budget: " << curr_budget);
