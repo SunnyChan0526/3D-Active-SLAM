@@ -225,10 +225,21 @@ void LoopClosureServer::findLoopClosure() {
   }
 
   double max_yaw_dev = 0.17;
+  // Reject ambiguous fits (similar objects matched one slot off moved the
+  // handheld pose 1.7 m the wrong way on 2026-11-18). 0 = upstream behaviour.
+  double ambiguity_distance = 0.3;
+  ros::param::param<double>("~ambiguity_distance", ambiguity_distance, 0.3);
+  double ambiguity_separation = 0.0;
   in_fa = estimate_bearingpos(relative_msts, landmark_positions_, false, 0,
                               max_yaw_dev, matched_indices, position_estimate,
                               yaw_estimate, exit_sign,
-                              max_tol_per_landmark_pos_error);
+                              max_tol_per_landmark_pos_error,
+                              ambiguity_distance, &ambiguity_separation);
+  if (exit_sign == -3) {
+    ROS_WARN_STREAM("[findLoopClosure] AMBIGUOUS match rejected: another landmark assignment fits within "
+                    << max_tol_per_landmark_pos_error << " m but places the robot "
+                    << ambiguity_separation << " m away (limit " << ambiguity_distance << " m)");
+  }
   // YAW estimate should be relative. Should be very small
   ROS_INFO_STREAM("Position Esimtate: x: \n"
                   << position_estimate[0] << " y:" << position_estimate[1]

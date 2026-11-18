@@ -452,6 +452,15 @@ void ActiveSlamInputNode::detectLoopClosureDoneCallback(
     }
     return;
   }
+  // A result for a goal that was already aborted/preempted (e.g. a duplicate
+  // request sent right after a success) must not become a loop-closure factor;
+  // upstream set loopClosureFound_ before checking this, adding the same
+  // closure twice.
+  if (!active_loop_closure_server_ptr_->isActive()) {
+    ROS_WARN("[Loop Find Callback] Ignoring loop closure result: active goal is no longer active");
+    detectLoopClosureServerTriggered_ = false;
+    return;
+  }
   // ROS_INFO("entering odom callback");
 
   auto pose =

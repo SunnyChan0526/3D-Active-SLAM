@@ -315,8 +315,13 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
 
 // Interface that takes Yaw prior
 bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, const std::vector< Eigen::Vector3d>& obj_positions, bool fit_all_available, double yaw_center, double yaw_max_dev, 
-              std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error)
+              std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error,
+              double ambiguity_distance, double* ambiguity_separation_out)
 {
+  struct Accepted { double loss; Eigen::Vector3d pos; double yaw; std::vector< std::array< int,2>> matches; };
+  std::vector<Accepted> accepted;  // only used when ambiguity_distance > 0
+  const double tol_sq = max_tol_per_landmark_pos_error * max_tol_per_landmark_pos_error;
+  if (ambiguity_separation_out) *ambiguity_separation_out = 0.0;
   /*
   comments for input variables:
   - measurements: 
@@ -507,10 +512,20 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
             }
             std::cout << "Update msts" << std::endl;
 
-            if (opt_loss <= max_tol_per_landmark_pos_error * max_tol_per_landmark_pos_error) {
+            if (ambiguity_distance <= 0 && opt_loss <= tol_sq) {
               std::cout << "current min_residual 2: " << std::pow(opt_loss,0.5) << std::endl;
               return true;
             }
+          }
+          if (ambiguity_distance > 0 && temp_loss <= tol_sq) {
+            Eigen::Matrix3d rot;
+            rot << cos(yaw_candidate), -sin(yaw_candidate), 0.0,
+                   sin(yaw_candidate),  cos(yaw_candidate), 0.0,
+                   0.0, 0.0, 1.0;
+            Accepted a{temp_loss, mean_obj - rot * mean_mst, yaw_candidate, {}};
+            for (k = 0; k < num_matches; k++)
+              a.matches.push_back({ mst_combinations[k], obj_combinations[permutation[k]] });
+            accepted.push_back(std::move(a));
           }
 
         } while(std::next_permutation(permutation, permutation + num_matches));
@@ -566,9 +581,32 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
       }
     }
 
+    // Ambiguity check at the largest match count that produced an accepted fit.
+    if (ambiguity_distance > 0 && !accepted.empty()) {
+      size_t best = 0;
+      for (size_t a = 1; a < accepted.size(); a++)
+        if (accepted[a].loss < accepted[best].loss) best = a;
+      double separation = 0.0;
+      for (const auto& a : accepted)
+        separation = std::max(separation, (a.pos - accepted[best].pos).norm());
+      if (ambiguity_separation_out) *ambiguity_separation_out = separation;
+      position_estimate_out = accepted[best].pos;
+      yaw_estimate_out = accepted[best].yaw;
+      matched_indices_out = accepted[best].matches;
+      std::cout << "[estimate_bearingpos] matches=" << num_matches << " accepted fits=" << accepted.size()
+                << " best residual=" << std::sqrt(accepted[best].loss)
+                << " max separation between accepted fits=" << separation << " m" << std::endl;
+      if (separation > ambiguity_distance) {
+        exit_sign = -3;  // ambiguous: another assignment fits but moves the robot elsewhere
+        return false;
+      }
+      exit_sign = 0;
+      return true;
+    }
   }
   //wrap up
   exit_sign = 0;
+  if (ambiguity_distance > 0) return false;  // nothing under tolerance at any match count
   std::cout << "current min_residual 2: " << std::pow(opt_loss,0.5) << std::endl;
   if ((opt_loss <= max_tol_per_landmark_pos_error * max_tol_per_landmark_pos_error)) {
     return true;

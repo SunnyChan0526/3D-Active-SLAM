@@ -18,8 +18,14 @@ bool in_region(const double& roll_vio, const double& pitch_vio,
 bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, const std::vector< Eigen::Vector3d>& obj_positions, bool fit_all_available,
                             std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error=0.3);
 
+// ambiguity_distance > 0: instead of accepting the first assignment under the
+// residual tolerance, evaluate every assignment at that match count and reject
+// (return false, exit_sign = -3) when two accepted assignments place the robot
+// more than ambiguity_distance apart (e.g. similar chairs matched one slot off).
+// ambiguity_distance <= 0 keeps the upstream first-accept behaviour.
 bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, const std::vector< Eigen::Vector3d>& obj_positions, bool fit_all_available, double yaw_center, double yaw_max_dev, 
-                            std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error=0.3);
+                            std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error=0.3,
+                            double ambiguity_distance=0.0, double* ambiguity_separation_out=nullptr);
 
 
 #endif

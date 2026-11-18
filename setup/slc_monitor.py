@@ -20,7 +20,7 @@ ansi = re.compile(r'\x1b\[[0-9;]*m')
 
 count = dict(callbacks=0, nonempty_callbacks=0, no_pose=0, plans=0, plans_with_candidates=0,
              refresh=0, cop_sent=0, closure_only=0, height_clamped=0, utility=0, info_gain=0, closure_inserted=0, observed_ftr=0,
-             observed_clo=0, skipped_ftr=0, skipped_clo=0, inaccessible=0, height_skip=0,
+             observed_clo=0, match_ambiguous=0, match_rejected=0, closure_factor=0, skipped_ftr=0, skipped_clo=0, inaccessible=0, height_skip=0,
              ig_service_fail=0, traceback=0)
 state = dict(params=None, landmarks_max=0, landmarks_last=0, candidate_ids=set(),
              last_candidates=None, collecting=None, last_utility=None, ftr_utils=[], clo_utils=[], node_died=False)
@@ -176,6 +176,19 @@ def handle(line):
         else:
             count['observed_ftr'] += 1
             event('target completed: ' + tok, 'first_ftr_done', '92')
+        return
+    if 'AMBIGUOUS match rejected' in line:
+        count['match_ambiguous'] += 1
+        event('matcher: AMBIGUOUS fit rejected (' + line.split('places the robot')[-1].strip()[:40] + ')', 'ambiguous', '93')
+        return
+    if 'residual on landmark positions is too large' in line:
+        count['match_rejected'] += 1
+        return
+    if 'WILL ADD loop closure factor' in line:
+        if time.time() - state.get('last_factor', 0) > 1.0:
+            count['closure_factor'] += 1
+            event('loop closure factor added to the factor graph', 'factor', '92')
+        state['last_factor'] = time.time()
         return
     m = re.search(r'\[Handheld Skipped, NOT completed\] (\w+)', line)
     if m:

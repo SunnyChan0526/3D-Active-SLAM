@@ -1258,9 +1258,10 @@ namespace ms_planner
     for (int i = 0; i < tmp_keypose_ids.size(); i++) {
       planned_closure_id_to_pose_[tmp_keypose_ids[i]] = tmp_keypose_poses[tmp_keypose_ids[i]];
       planned_closure_id_to_cluster_centroid_[tmp_keypose_ids[i]] = tmp_keypose_centroids[tmp_keypose_ids[i]];
-      for (int j = 0; j < loop_closure_id_to_landmarks_[tmp_keypose_ids[i]].size(); j++) {
-        planeed_closure_id_to_landmarks_[tmp_keypose_ids[i]].push_back(loop_closure_id_to_landmarks_[tmp_keypose_ids[i]][j]);
-      }
+      // Replace, not append: the upstream code appended on every COP result, so
+      // each handheld refresh duplicated the cluster (174 points after ~14 refreshes)
+      // and the brute-force matcher in loop_closure_server never finished.
+      planeed_closure_id_to_landmarks_[tmp_keypose_ids[i]] = loop_closure_id_to_landmarks_[tmp_keypose_ids[i]];
     }
     
     frontier_finder_->global_tour_planned = true;
@@ -1302,6 +1303,7 @@ namespace ms_planner
       active_slam_goal_indices_ = {"clo" + std::to_string(best)};
       planned_closure_id_to_pose_[best] = loop_closure_id_to_pose_[best];
       planned_closure_id_to_cluster_centroid_[best] = loop_closure_id_to_cluster_centroid_[best];
+      planeed_closure_id_to_landmarks_[best] = loop_closure_id_to_landmarks_[best];
       ++handheld_generation_;
       handheld_initial_ = 1;
       handheld_completed_ = 0;
