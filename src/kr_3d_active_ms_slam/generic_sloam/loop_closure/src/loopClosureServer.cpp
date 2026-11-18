@@ -1,5 +1,6 @@
 #include "loop_closure/loopClosureServer.h"
 #include <algorithm>
+#include <cmath>
 
 
 LoopClosureServer::LoopClosureServer(ros::NodeHandle &nh) : nh_(nh) {
@@ -239,6 +240,22 @@ void LoopClosureServer::findLoopClosure() {
     ROS_WARN_STREAM("[findLoopClosure] AMBIGUOUS match rejected: another landmark assignment fits within "
                     << max_tol_per_landmark_pos_error << " m but places the robot "
                     << ambiguity_separation << " m away (limit " << ambiguity_distance << " m)");
+  }
+  // Safety gate: a semantic match may not move the robot further than
+  // ~max_correction from the current SLAM estimate. In the 2026-11-18 handheld
+  // runs every wrong match moved the pose 1.6-2.8 m while VIO drift was <0.5 m
+  // and landmark error 0.2-0.4 m. 0 disables (upstream behaviour).
+  double max_correction = 1.0;
+  ros::param::param<double>("~max_correction", max_correction, 1.0);
+  if (in_fa && max_correction > 0) {
+    const double jump = std::hypot(position_estimate[0] - odom_x, position_estimate[1] - odom_y);
+    if (jump > max_correction) {
+      ROS_WARN_STREAM("[findLoopClosure] CORRECTION TOO LARGE, match rejected: it would move the robot "
+                      << jump << " m (limit " << max_correction << " m)");
+      in_fa = false;
+    } else {
+      ROS_INFO_STREAM("[findLoopClosure] correction size " << jump << " m (limit " << max_correction << " m)");
+    }
   }
   // YAW estimate should be relative. Should be very small
   ROS_INFO_STREAM("Position Esimtate: x: \n"

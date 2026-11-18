@@ -20,7 +20,7 @@ ansi = re.compile(r'\x1b\[[0-9;]*m')
 
 count = dict(callbacks=0, nonempty_callbacks=0, no_pose=0, plans=0, plans_with_candidates=0,
              refresh=0, cop_sent=0, closure_only=0, height_clamped=0, utility=0, info_gain=0, closure_inserted=0, observed_ftr=0,
-             observed_clo=0, match_ambiguous=0, match_rejected=0, closure_factor=0, skipped_ftr=0, skipped_clo=0, inaccessible=0, height_skip=0,
+             observed_clo=0, match_ambiguous=0, match_too_large=0, match_rejected=0, closure_factor=0, skipped_ftr=0, skipped_clo=0, inaccessible=0, height_skip=0,
              ig_service_fail=0, traceback=0)
 state = dict(params=None, landmarks_max=0, landmarks_last=0, candidate_ids=set(),
              last_candidates=None, collecting=None, last_utility=None, ftr_utils=[], clo_utils=[], node_died=False)
@@ -180,6 +180,10 @@ def handle(line):
     if 'AMBIGUOUS match rejected' in line:
         count['match_ambiguous'] += 1
         event('matcher: AMBIGUOUS fit rejected (' + line.split('places the robot')[-1].strip()[:40] + ')', 'ambiguous', '93')
+        return
+    if 'CORRECTION TOO LARGE' in line:
+        count['match_too_large'] += 1
+        event('matcher: correction too large, rejected (' + line.split('move the robot')[-1].strip()[:30] + ')', 'too_large', '93')
         return
     if 'residual on landmark positions is too large' in line:
         count['match_rejected'] += 1
