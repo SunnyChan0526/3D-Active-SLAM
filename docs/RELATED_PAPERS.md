@@ -3,7 +3,7 @@
 整理日期：2026-11-17。這份文件整理先前查過、對本專案有用的論文。
 本專案的路線：以 Tao 為基線，先用手持（筆電 + D435i）驗證語意 SLAM 和 loop closure，再加入 RAVEN 的想法，最後上 UAV（室內、低空、GNSS 拒止）。
 ✅ 表示讀過 arXiv 全文或摘要頁，確認過平台和場景。⚠️ 表示只看過搜尋摘要，或網站擋掉自動讀取。
-搭配 [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)（系統說明）和 [next_steps_roadmap.md](next_steps_roadmap.md)（待辦）一起看。
+搭配 [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)（系統說明）和 [NEXT_STEPS_ROADMAP.md](NEXT_STEPS_ROADMAP.md)（待辦）一起看。
 
 > 2026-11-17 從 Claude web 專案移進 repo。內容未改，只整理成 Markdown 標題與表格，並更新檔名參照與第七節第 3 點。
 

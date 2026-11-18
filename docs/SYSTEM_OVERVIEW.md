@@ -5,7 +5,7 @@
 最後更新：2026-11-17（main `314d3ae`，PR #1 合併後）
 
 用途：換電腦或開新的 Claude 對話時先讀這份，了解**系統是什麼、怎麼跑、有哪些已知限制**。
-**要做什麼、做到哪**請看 [next_steps_roadmap.md](next_steps_roadmap.md)，這份不放待辦事項。
+**要做什麼、做到哪**請看 [NEXT_STEPS_ROADMAP.md](NEXT_STEPS_ROADMAP.md)，這份不放待辦事項。
 
 ## 0. 快速說明
 
