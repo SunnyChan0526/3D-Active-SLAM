@@ -1,5 +1,8 @@
 ground_class_label: 0 # the label corresponds to ground class
 car_class_label: 1 # the label corresponds to vehicle class
+# labels from detect.py that become landmarks: 1 chair, 2 dining table, 3 tv.
+# Upstream used only [1]; use [1] to reproduce the chair-only baseline.
+object_class_labels: [1, 2, 3]
 tree_trunk_class_label: 8 # the label corresponds to tree class
 light_pole_class_label: 9 # the label corresponds to light pole class
 desired_acc_obj_pub_rate: 1 # in Hz
@@ -9,8 +12,8 @@ min_samples_scan: 300 # min_samples_scan : determines the minimum samples needed
 depth_percentile_lower: 20 # depth_percentile_lower: depth percentile for filtering out noisy points in depth camera
 depth_percentile_uppper: 70 # depth_percentile_uppper: depth percentile for filtering out noisy points in depth camera
 confidence_threshold: 0.2 # confidence_threshold: confidence threshold for filtering out noisy points in depth camera
-cuboid_length_cutoff_upper: 1.0 # cuboid_length_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
-cuboid_width_cutoff_upper: 1.0 # cuboid_width_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
+cuboid_length_cutoff_upper: 2.0 # was 1.0 (chairs only); dining tables are 1.2-1.8 m. cuboid_length_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
+cuboid_width_cutoff_upper: 2.0 # was 1.0 (chairs only). cuboid_width_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
 cuboid_height_cutoff_upper: 5 # cuboid_height_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
 assignment_threshold: 0.5 # assignment_threshold: Hungarian assignment cost to associate 2 cuboid centroids as one
 downsample_res: 0.02 # Resolution to perform voxel downsampling for instance point cloud accumulation

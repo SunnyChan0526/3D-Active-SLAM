@@ -50,6 +50,10 @@ class ProcessCloudNode:
 
         # the label corresponds to vehicle class
         self.car_class_label = rospy.get_param('~car_class_label', 1) 
+        # Semantic labels turned into object landmarks. Upstream used only
+        # car_class_label (1 = chair indoors), so tables (2) and TVs (3) from
+        # detect.py were dropped and every landmark was an identical chair.
+        self.object_class_labels = [int(v) for v in rospy.get_param('~object_class_labels', [self.car_class_label])]
 
         # the label corresponds to tree class
         self.tree_trunk_class_label = rospy.get_param('~tree_trunk_class_label', 8) 
@@ -139,6 +143,7 @@ class ProcessCloudNode:
         print("######################################################################################################")
         print("ground_class_label: ", self.ground_class_label)
         print("car_class_label: ", self.car_class_label)
+        print("object_class_labels: ", self.object_class_labels)
         print("tree_trunk_class_label: ", self.tree_trunk_class_label)
         print("light_pole_class_label: ", self.light_pole_class_label)
         print("desired_acc_obj_pub_rate: ", self.desired_acc_obj_pub_rate)
@@ -364,7 +369,13 @@ class ProcessCloudNode:
 
         else:
             # intensity is the class label, which is: 1-road, 5-car, 8-tree-trunk, 9-light-pole, 0-unlabeled(background)
-            points_world_xyzi_id_conf_depth_cars = points_world_xyzi_id_conf_depth[points_world_xyzi_id_conf_depth[:, 3] == self.car_class_label, :]
+            object_mask = np.isin(points_world_xyzi_id_conf_depth[:, 3], self.object_class_labels)
+            points_world_xyzi_id_conf_depth_cars = points_world_xyzi_id_conf_depth[object_mask, :]
+            if points_world_xyzi_id_conf_depth_cars.shape[0] > 0:
+                labels_here = points_world_xyzi_id_conf_depth_cars[:, 3]
+                print("[OBJ-CLASSES] instances per label: " + ", ".join(
+                    "{}={}".format(int(c), len(np.unique(points_world_xyzi_id_conf_depth_cars[labels_here == c, 4])))
+                    for c in self.object_class_labels), flush=True)
             points_world_xyzi_ground = points_world_xyzi_id_conf_depth[points_world_xyzi_id_conf_depth[:, 3] == self.ground_class_label, :3]
 
             ##################################### Ground Plane Fitting ##################################
