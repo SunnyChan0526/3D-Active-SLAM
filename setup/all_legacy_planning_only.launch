@@ -76,8 +76,10 @@
     <arg name="cpu_threads" value="$(arg semantic_cpu_threads)"/>
     <arg name="cpu_nice" value="$(arg semantic_cpu_nice)"/>
   </include>
+  <arg name="process_cloud_config" default="$(find scan2shape_launch)/config/process_cloud_node_real_robot_sunny.yaml"/>
   <include if="$(arg start_cloud)" file="$(find scan2shape_launch)/launch/real_robot_process_cloud_node.launch">
     <arg name="odom_topic" value="/vins_estimator/odometry"/>
+    <arg name="config" value="$(arg process_cloud_config)"/>
   </include>
   <include if="$(arg start_cop)" file="$(find exploration_manager)/launch/global_plan_server.launch"/>
   <include if="$(arg start_planner)" file="$(find exploration_manager)/launch/real_robot_planning_sunny.launch">

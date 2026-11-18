@@ -12,17 +12,17 @@ min_samples_scan: 300 # min_samples_scan : determines the minimum samples needed
 depth_percentile_lower: 20 # depth_percentile_lower: depth percentile for filtering out noisy points in depth camera
 depth_percentile_uppper: 70 # depth_percentile_uppper: depth percentile for filtering out noisy points in depth camera
 confidence_threshold: 0.2 # confidence_threshold: confidence threshold for filtering out noisy points in depth camera
-cuboid_length_cutoff_upper: 2.0 # was 1.0 (chairs only); dining tables are 1.2-1.8 m. cuboid_length_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
-cuboid_width_cutoff_upper: 2.0 # was 1.0 (chairs only). cuboid_width_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
+cuboid_length_cutoff_upper: 1.0 # 1.0 = upstream. 2.0 (to admit tables) let merged chairs through; offline replay 2026-11-18 favoured 1.0
+cuboid_width_cutoff_upper: 1.0 # see cuboid_length_cutoff_upper
 cuboid_height_cutoff_upper: 5 # cuboid_height_cutoff_upper: cutoff for filtering out the FINAL false positive cuboids
-assignment_threshold: 0.5 # assignment_threshold: Hungarian assignment cost to associate 2 cuboid centroids as one
+assignment_threshold: 0.3 # was 0.5; adjacent chairs (0.5-0.7 m apart) were tracked as one object
 downsample_res: 0.02 # Resolution to perform voxel downsampling for instance point cloud accumulation
 num_instance_point_lim: 30000 # only keep the most recent num_points_limit_per_instance for any instance
 for_forestry_bags: False # run forestry data or not
 sim: False
 ########### THREE PARAMS ARE LINKED TOGETHER ###########
 expected_segmentation_rate: 2 # in Hz
-time_to_initialize_cuboid: 0.02 # time_to_initialize_cuboid: Minimum time required to track a cuboid per lidar scan
+time_to_initialize_cuboid: 1.5 # was 0.02; objects seen only briefly became ghost landmarks (28 landmarks for ~14 objects)
 time_to_delete_lost_track_cuboid: 4 # time_to_delete_lost_track_cuboid: Lower will delete tracks faster and will cause new tracks to be initiated at the same location
 ########################################################
 
