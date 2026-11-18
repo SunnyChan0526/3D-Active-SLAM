@@ -316,7 +316,7 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
 // Interface that takes Yaw prior
 bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, const std::vector< Eigen::Vector3d>& obj_positions, bool fit_all_available, double yaw_center, double yaw_max_dev, 
               std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error,
-              double ambiguity_distance, double* ambiguity_separation_out)
+              double ambiguity_distance, double* ambiguity_separation_out, int min_matches)
 {
   struct Accepted { double loss; Eigen::Vector3d pos; double yaw; std::vector< std::array< int,2>> matches; };
   std::vector<Accepted> accepted;  // only used when ambiguity_distance > 0
@@ -368,7 +368,7 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
 
   int num_matches;  //number of matches between sensed objects and those in the map
   // for(num_matches = 3; (num_matches <= num_msts) && (num_matches <= num_objs); num_matches++)
-  for(num_matches = std::min(num_msts, num_objs); num_matches >= 3; num_matches--)
+  for(num_matches = std::min(num_msts, num_objs); num_matches >= std::max(3, min_matches); num_matches--)
   {
     
     for(i = 0; i < num_matches; i++)   //intialize first candidate combination of objects

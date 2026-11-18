@@ -25,7 +25,8 @@ bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, cons
 // ambiguity_distance <= 0 keeps the upstream first-accept behaviour.
 bool estimate_bearingpos(const std::vector< Eigen::Vector3d>& measurements, const std::vector< Eigen::Vector3d>& obj_positions, bool fit_all_available, double yaw_center, double yaw_max_dev, 
                             std::vector< std::array< int,2>>& matched_indices_out, Eigen::Vector3d& position_estimate_out, double& yaw_estimate_out, int& exit_sign, const double& max_tol_per_landmark_pos_error=0.3,
-                            double ambiguity_distance=0.0, double* ambiguity_separation_out=nullptr);
+                            double ambiguity_distance=0.0, double* ambiguity_separation_out=nullptr,
+                            int min_matches=3);  // fewest object pairs a fit may use (upstream: 3)
 
 
 #endif
