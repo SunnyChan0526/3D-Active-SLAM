@@ -13,7 +13,8 @@ Upstream origins and base commits: see [UPSTREAM.md](UPSTREAM.md).
 System overview and how to run: [docs/SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md).
 What to do next: [docs/NEXT_STEPS_ROADMAP.md](docs/NEXT_STEPS_ROADMAP.md).
 Related papers and reading order: [docs/RELATED_PAPERS.md](docs/RELATED_PAPERS.md).
-New-machine setup: see [new_ubuntu_migration.md](new_ubuntu_migration.md) and
+Docker (Ubuntu 22.04 or any Linux host): see [docker/README.md](docker/README.md).
+New-machine setup (native 20.04): see [new_ubuntu_migration.md](new_ubuntu_migration.md) and
 [local_migration_status.txt](local_migration_status.txt).
 
 ## Fresh clone

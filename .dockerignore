@@ -1,0 +1,6 @@
+# The image only needs package manifests (for rosdep) and the entrypoint.
+# Source code is bind-mounted at runtime by docker/run.sh.
+*
+!src/**/package.xml
+!src/**/CATKIN_IGNORE
+!docker/entrypoint.sh
