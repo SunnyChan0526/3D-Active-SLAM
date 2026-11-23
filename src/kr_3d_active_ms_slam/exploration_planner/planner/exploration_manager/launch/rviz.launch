@@ -4,6 +4,7 @@
     pkg="rviz"
     type="rviz"
     output="log"
+    launch-prefix="$(optenv ACTIVESLAM_RVIZ_PREFIX)"
     args="-d $(arg rviz_config)"/>
 
 
