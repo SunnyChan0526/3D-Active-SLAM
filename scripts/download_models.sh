@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="$ROOT/src/kr_3d_active_ms_slam/semantic_detection/rgb_sem_segmentation/models"
 FILE="$DEST/yolov8x-seg.pt"
 SHA256="d63cbfa5764867c0066bedfa43cf2dcd90a412a1de44b2e238c43978a9d28ea6"
-URL="${YOLO_URL:-https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8x-seg.pt}"
+URL="${YOLO_URL:-https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x-seg.pt}"
 
 mkdir -p "$DEST"
 if [[ -f "$FILE" ]] && echo "$SHA256  $FILE" | sha256sum -c --quiet; then

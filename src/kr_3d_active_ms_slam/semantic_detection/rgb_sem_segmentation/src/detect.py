@@ -14,6 +14,9 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image, PointCloud2, PointField
 import cv2
 from sem_detection_msgs.msg import syncPcOdom
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 bridge = CvBridge()
 
@@ -37,7 +40,21 @@ class sem_detection:
         self.prev_time = rospy.Time.now()
         rospack = rospkg.RosPack()
         self.model_path = rospack.get_path('rgb_sem_segmentation') + '/models/yolov8x-seg.pt'
-        self.yolo = YOLO(self.model_path)
+        # Optional GPU inference server (Jetson: docker/yolo_gpu.sh). Empty
+        # address or unreachable server -> local in-process YOLO as before.
+        yolo_server = rospy.get_param('~yolo_server', os.environ.get('ACTIVESLAM_YOLO_SERVER', ''))
+        self.yolo = None
+        if yolo_server:
+            try:
+                from remote_yolo import RemoteYOLO
+                self.yolo = RemoteYOLO(yolo_server)
+                rospy.loginfo('Semantic YOLO: using GPU server at %s', yolo_server)
+            except Exception as e:
+                rospy.logwarn('Semantic YOLO: server %s unavailable (%s); falling back to local YOLO',
+                              yolo_server, e)
+        if self.yolo is None:
+            self.yolo = YOLO(self.model_path)
+            rospy.loginfo('Semantic YOLO: local model %s', self.model_path)
 
         # Subscribe to the rgb image
         # ros params
