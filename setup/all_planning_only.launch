@@ -8,12 +8,14 @@
   <arg name="start_cop" default="true"/>
   <arg name="start_preview" default="true"/>
   <arg name="start_rviz" default="true"/>
+  <!-- Jetson sets 15 via docker/run.sh: align_depth at 30 fps starves the CPU there. -->
+  <arg name="color_fps" default="$(optenv ACTIVESLAM_COLOR_FPS 30)"/>
 
   <include if="$(arg start_camera)" file="$(find realsense2_camera)/launch/rs_camera.launch">
     <arg name="enable_color" value="true"/>
     <arg name="color_width" value="640"/>
     <arg name="color_height" value="480"/>
-    <arg name="color_fps" value="30"/>
+    <arg name="color_fps" value="$(arg color_fps)"/>
     <arg name="enable_depth" value="true"/>
     <arg name="depth_width" value="640"/>
     <arg name="depth_height" value="480"/>

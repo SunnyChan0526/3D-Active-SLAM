@@ -30,6 +30,8 @@
   <arg name="start_cop" default="true"/>
   <arg name="start_planner" default="true"/>
   <arg name="start_rviz" default="true"/>
+  <!-- Jetson sets 15 via docker/run.sh: align_depth at 30 fps starves the CPU there. -->
+  <arg name="color_fps" default="$(optenv ACTIVESLAM_COLOR_FPS 30)"/>
   <arg name="disable_ir_emitter" default="false"/>
   <arg name="semantic_cpu_threads" default="0"/>
   <arg name="semantic_cpu_nice" default="0"/>
@@ -38,7 +40,7 @@
     <arg name="enable_color" value="true"/>
     <arg name="color_width" value="640"/>
     <arg name="color_height" value="480"/>
-    <arg name="color_fps" value="30"/>
+    <arg name="color_fps" value="$(arg color_fps)"/>
     <arg name="enable_depth" value="true"/>
     <arg name="depth_width" value="640"/>
     <arg name="depth_height" value="480"/>

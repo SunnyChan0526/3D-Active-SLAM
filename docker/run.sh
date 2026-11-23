@@ -9,6 +9,7 @@
 # Env overrides:
 #   ACTIVESLAM_IMAGE   image tag              (default activeslam:noetic)
 #   ACTIVESLAM_GPU     auto | on | off        (default auto: use NVIDIA if available)
+#   ACTIVESLAM_COLOR_FPS  RealSense color fps (default 30; 15 on Jetson)
 #   ACTIVESLAM_JOBS    parallel jobs for image build (default 4)
 #   TORCH_VARIANT      cpu | cu121 for image build   (default cpu)
 set -euo pipefail
@@ -39,6 +40,15 @@ if [[ "${1:-}" == build ]]; then
   exit $?
 fi
 
+# Jetson: prefer the librealsense 2.54 image (docker/Dockerfile.rs) when it
+# exists, and run color at 15 fps so align_depth keeps up on the CPU.
+if [[ -f /etc/nv_tegra_release ]]; then
+  if [[ -z "${ACTIVESLAM_IMAGE:-}" ]] && docker image inspect activeslam:noetic-rs254 >/dev/null 2>&1; then
+    image=activeslam:noetic-rs254
+  fi
+  : "${ACTIVESLAM_COLOR_FPS:=15}"
+fi
+
 tty_args=(-i)
 [[ -t 0 && -t 1 ]] && tty_args=(-it)
 (( $# )) || set -- bash
@@ -53,6 +63,9 @@ if [[ -z "${ACTIVESLAM_YOLO_SERVER+x}" && -f /etc/nv_tegra_release ]]; then
     echo "NOTE: GPU YOLO server not running (docker/yolo_gpu.sh start); semantic YOLO will use CPU."
 fi
 yolo_env=(-e ACTIVESLAM_YOLO_SERVER="${ACTIVESLAM_YOLO_SERVER:-}")
+if [[ -n "${ACTIVESLAM_COLOR_FPS:-}" ]]; then
+  yolo_env+=(-e ACTIVESLAM_COLOR_FPS="$ACTIVESLAM_COLOR_FPS")
+fi
 
 # Already running -> open another shell / run the command in it.
 if [[ -n "$(docker ps -q -f "name=^${name}$")" ]]; then
