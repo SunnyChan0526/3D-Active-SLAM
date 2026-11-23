@@ -124,13 +124,27 @@ RUN set -e; \
     /usr/bin/python3 -m venv --system-site-packages "$runtime"; \
     py="$runtime/bin/python"; \
     "$py" -m pip install --no-cache-dir 'pip==24.3.1' 'setuptools==75.3.2' 'wheel==0.45.1'; \
-    "$py" -m pip install --no-cache-dir "torch==2.4.1+${TORCH_VARIANT}" "torchvision==0.19.1+${TORCH_VARIANT}" \
-      --index-url "https://download.pytorch.org/whl/${TORCH_VARIANT}"; \
+    if [[ "$(uname -m)" == aarch64 ]]; then \
+      # ARM64 (e.g. Jetson): PyPI torch wheels are CPU-only and carry no +cpu
+      # suffix; open3d has no aarch64 wheel before 0.14.1.
+      "$py" -m pip install --no-cache-dir 'torch==2.4.1' 'torchvision==0.19.1'; \
+      open3d_pin='open3d==0.14.1'; \
+    else \
+      "$py" -m pip install --no-cache-dir "torch==2.4.1+${TORCH_VARIANT}" "torchvision==0.19.1+${TORCH_VARIANT}" \
+        --index-url "https://download.pytorch.org/whl/${TORCH_VARIANT}"; \
+      open3d_pin='open3d==0.13.0'; \
+    fi; \
     "$py" -m pip install --no-cache-dir 'numpy==1.23.5' 'scipy==1.10.1' \
       'scikit-learn==1.3.2' 'pandas==2.0.3' 'matplotlib==3.7.5' \
-      'opencv-python==4.10.0.84' 'open3d==0.13.0' 'ultralytics==8.0.38' \
+      'opencv-python==4.10.0.84' "$open3d_pin" 'ultralytics==8.0.38' \
       'testresources==2.0.1'; \
     source /opt/ros/noetic/setup.bash; \
+    # aarch64: torch's bundled libgomp and the system libgomp (open3d) must be
+    # preloaded ("cannot allocate memory in static TLS block");
+    # entrypoint.sh sets the same at runtime.
+    if [[ "$(uname -m)" == aarch64 ]]; then \
+      export LD_PRELOAD="$(ls "$runtime"/lib/python3.8/site-packages/torch.libs/libgomp-*.so* | head -1):/usr/lib/aarch64-linux-gnu/libgomp.so.1"; \
+    fi; \
     "$py" -c "import rospy, tf, cv_bridge, ros_numpy, numpy, scipy, sklearn, open3d, cv2, torch, torchvision; from ultralytics import YOLO; print('Python imports OK, torch', torch.__version__)"
 
 # ---------------------------------------------------------------------------

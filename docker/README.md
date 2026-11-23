@@ -67,3 +67,22 @@ docker/run.sh                                         # 容器已經在跑時，
 | RViz 開不起來 / `could not connect to display` | 從桌面終端機執行；確認主機有 `xhost`；改用 Xorg session |
 | 想強制開或關 GPU | `ACTIVESLAM_GPU=on` 或 `ACTIVESLAM_GPU=off docker/run.sh ...` |
 | 想從頭重新編譯 workspace | `docker volume rm activeslam_realsense_ws activeslam_vins_ws activeslam_active_ms_slam_ws` |
+
+## NVIDIA Jetson（arm64，JetPack 6）注意事項
+
+已在 Jetson AGX Orin（L4T R36.4.3）上 build 並編譯成功。與 x86 的差異都由腳本自動處理：
+
+- PyTorch 用 PyPI 的 aarch64 CPU 版 `torch==2.4.1`；open3d 改用 `0.14.1`（0.13.0 沒有 aarch64 wheel）。
+- aarch64 需要預先載入 torch 和系統的 libgomp，否則會出現 `cannot allocate memory in static TLS block`；`entrypoint.sh` 會自動設定 `LD_PRELOAD`。
+- 主機若沒有 buildx（舊版 builder），`.dockerignore` 的例外規則無效，所以 `run.sh build` 會自己組一個最小的 build context。
+- 在 Jetson 上預設關閉主容器的 GPU 直通（主機的 L4T 函式庫和 20.04 映像不相容），RViz 用 Mesa 軟體算圖。
+- **YOLO 用 GPU**：語意分割改由另一個 JetPack 6 容器（`docker/yolo_gpu/`）在 GPU 上推論，`detect.py` 經 `127.0.0.1:8765` 呼叫它。
+  實測 YOLOv8x-seg 約 0.1 秒/張（CPU 約 3.5 秒），結果與 CPU 版相同。
+  ```bash
+  docker/yolo_gpu.sh build    # 第一次（會下載約 6.7 GB 的 dustynv/l4t-pytorch:r36.4.0）
+  docker/yolo_gpu.sh start    # 背景執行，開機後自動啟動
+  docker/yolo_gpu.sh status   # / logs / stop
+  ```
+  `docker/run.sh` 在 Jetson 上會自動設 `ACTIVESLAM_YOLO_SERVER=127.0.0.1:8765`；伺服器沒開時 `detect.py` 自動退回 CPU。
+  想強制用 CPU：`ACTIVESLAM_YOLO_SERVER= docker/run.sh ...`。
+- 快速自我檢查：`docker/run.sh bash setup/docker_smoke_test.sh`

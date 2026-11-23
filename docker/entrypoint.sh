@@ -5,6 +5,19 @@
 repo="$HOME/Desktop/ActiveSLAM_move2Laptop"
 prefix="$HOME/.local/opt/active-slam"
 
+# aarch64 (e.g. Jetson): torch and open3d fail with "libgomp...: cannot
+# allocate memory in static TLS block" unless both torch's bundled libgomp and
+# the system libgomp are preloaded (in that order).
+if [[ "$(uname -m)" == aarch64 && ":${LD_PRELOAD:-}:" != *libgomp* ]]; then
+  gomp_preload=
+  for lib in "$prefix"-python/lib/python3.8/site-packages/torch.libs/libgomp-*.so* \
+             /usr/lib/aarch64-linux-gnu/libgomp.so.1; do
+    [[ -f "$lib" ]] && gomp_preload="${gomp_preload:+$gomp_preload:}$lib"
+  done
+  [[ -n "$gomp_preload" ]] && export LD_PRELOAD="$gomp_preload${LD_PRELOAD:+:$LD_PRELOAD}"
+  unset gomp_preload lib
+fi
+
 if [[ ! -d "$repo/src" ]]; then
   echo "[activeslam] WARNING: repo not mounted at $repo (use docker/run.sh)." >&2
 fi
