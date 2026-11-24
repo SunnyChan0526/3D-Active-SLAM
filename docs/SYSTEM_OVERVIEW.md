@@ -176,10 +176,10 @@ RViz 裡橘色箭頭是探索目標（`ftr`），紫色箭頭是 SLC 目標（`c
 
 | 論文 | 關係 |
 |---|---|
-| 3D Active Metric-Semantic SLAM（Tao，RA-L 2024，arXiv 2309.06950） | 本專案複現的對象；論文與程式差異整理在 `setup/PAPER_PLANNING_AUDIT.md` |
-| RAVEN（Chen 等，T-RO 2026，arXiv 2610.37111） | 改進方向：特徵點 loop closure、λ 優先順序、感知導向軌跡（OFIF）。程式碼尚未公開 |
-| Perception-Aware Autonomous Exploration in Feature-Limited Environments（RA-L 2026，arXiv 2603.15605） | 低紋理室內環境的 VIO 感知導向探索 |
-| Region Based SLAM-Aware Exploration（arXiv 2504.10416） | 室內主動 loop closure 的觸發機制 |
-| SlideSLAM（T-RO 2025，arXiv 2406.17249） | 同團隊的多機語意 SLAM |
-| FALCON（HKUST，T-RO） | 開源探索基線 |
-| LA-Planner（Robotics-STAR-Lab，arXiv 2503.15273） | 開源的感知導向規劃器 |
+| 3D Active Metric-Semantic SLAM（Tao，RA-L 2024，[arXiv 2309.06950](https://arxiv.org/abs/2309.06950)） | 本專案複現的對象；論文與程式差異整理在 `setup/PAPER_PLANNING_AUDIT.md` |
+| RAVEN（Chen 等，T-RO 2026，[arXiv 2610.37111](https://arxiv.org/abs/2610.37111)） | 改進方向：特徵點 loop closure、λ 優先順序、感知導向軌跡（OFIF）。程式碼尚未公開 |
+| Perception-Aware Autonomous Exploration in Feature-Limited Environments（RA-L 2026，[arXiv 2603.15605](https://arxiv.org/abs/2603.15605)） | 低紋理室內環境的 VIO 感知導向探索 |
+| Region Based SLAM-Aware Exploration（[arXiv 2504.10416](https://arxiv.org/abs/2504.10416)） | 室內主動 loop closure 的觸發機制 |
+| SlideSLAM（T-RO 2025，[arXiv 2406.17249](https://arxiv.org/abs/2406.17249)） | 同團隊的多機語意 SLAM |
+| FALCON（HKUST，T-RO，[arXiv 2407.00577](https://arxiv.org/abs/2407.00577)） | 開源探索基線 |
+| LA-Planner（Robotics-STAR-Lab，[arXiv 2503.15273](https://arxiv.org/abs/2503.15273)，[GitHub](https://github.com/Robotics-STAR-Lab/LA-Planner)） | 開源的感知導向規劃器 |
