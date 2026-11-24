@@ -2,8 +2,14 @@
 # Collect guided sensor data; default to the isolated camera/VINS pipeline.
 set -eo pipefail
 setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Recordings go under setup/ unless ACTIVE_SLAM_RESULTS_DIR points elsewhere
+# (docker/run.sh sets it when ACTIVESLAM_RESULTS_DIR mounts an external SSD).
+results_root="${ACTIVE_SLAM_RESULTS_DIR:-$setup_dir}"
+if [[ ! -d "$results_root" ]]; then
+  echo "ACTIVE_SLAM_RESULTS_DIR 不存在：$results_root（容器若在設定前就已啟動，請先 docker stop activeslam 再重開）。"; exit 1
+fi
 # Check before creating logs, stopping nodes, or starting ROS.
-python3 "$setup_dir/recording_disk_guard.py" "$setup_dir"
+python3 "$setup_dir/recording_disk_guard.py" "$results_root"
 source "$setup_dir/source_active_slam.bash"
 pipeline="${ACTIVE_SLAM_TEST_PIPELINE:-isolated}"
 case "$pipeline" in
@@ -11,7 +17,7 @@ case "$pipeline" in
   full) result_group=vins_full_pipeline_tests; full_nodes=true ;;
   *) echo "Unknown test pipeline: $pipeline"; exit 1 ;;
 esac
-run_dir="$setup_dir/$result_group/$(date +%Y%m%d_%H%M%S)"
+run_dir="$results_root/$result_group/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$run_dir"
 exec > >(tee "$run_dir/summary.log") 2>&1
 export PYTHONUNBUFFERED=1
@@ -56,7 +62,10 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 python3 "$setup_dir/recording_disk_guard.py" "$run_dir" --watch-parent "$$" &
 disk_guard_pid=$!
-launch_args=(disable_ir_emitter:=true "start_sloam:=$full_nodes" "start_loop:=$full_nodes"
+# IR emitter: off by default (unchanged); set false to keep it on. Logged in run_metadata.yaml.
+ir_emitter_off="${ACTIVE_SLAM_DISABLE_IR_EMITTER:-true}"
+case "$ir_emitter_off" in true|false) ;; *) echo 'ACTIVE_SLAM_DISABLE_IR_EMITTER 只能是 true 或 false。'; exit 1 ;; esac
+launch_args=("disable_ir_emitter:=$ir_emitter_off" "start_sloam:=$full_nodes" "start_loop:=$full_nodes"
   "start_semantic:=$full_nodes" "start_cloud:=$full_nodes" "start_cop:=$full_nodes"
   "start_planner:=$full_nodes" "start_rviz:=$full_nodes")
 launch_args+=("handheld_auto:=${ACTIVE_SLAM_HANDHELD_AUTO:-false}")
@@ -107,6 +116,28 @@ print('房間範圍：X {x_min:.2f}～{x_max:.2f} m（左右），Y {y_min:.2f}�
 PY2
   launch_args+=("mapper_config:=$run_dir/mapper_room.yaml")
 fi
+# Landmark classes (optional), e.g. ACTIVE_SLAM_OBJECT_CLASSES=1 for the author's
+# chairs-only baseline, or 1,2,3 for chair/table/TV. Unset = config file value.
+if [[ -n "${ACTIVE_SLAM_OBJECT_CLASSES:-}" ]]; then
+  python3 - "$run_dir/process_cloud_classes.yaml" "$ACTIVE_SLAM_OBJECT_CLASSES" "$setup_dir" <<'PY3'
+import re, sys
+from pathlib import Path
+out, raw, setup_dir = sys.argv[1:4]
+try:
+    labels = [int(v) for v in raw.replace(' ', '').split(',') if v]
+except ValueError:
+    raise SystemExit('ACTIVE_SLAM_OBJECT_CLASSES 必須是以逗號分隔的整數，例如 1 或 1,2,3。')
+if not labels:
+    raise SystemExit('ACTIVE_SLAM_OBJECT_CLASSES 不可為空。')
+src = Path(setup_dir).parent / 'src/kr_3d_active_ms_slam/generic_sloam/scan2shape_launch/config/process_cloud_node_real_robot_sunny.yaml'
+text, n = re.subn(r'(?m)^object_class_labels:.*$', 'object_class_labels: [{}]'.format(', '.join(map(str, labels))), src.read_text(), count=1)
+if n != 1:
+    raise SystemExit('process_cloud_node_real_robot_sunny.yaml 找不到 object_class_labels')
+Path(out).write_text('# Generated per run (ACTIVE_SLAM_OBJECT_CLASSES)\n' + text)
+print('地標類別：{}'.format(labels))
+PY3
+  launch_args+=("process_cloud_config:=$run_dir/process_cloud_classes.yaml")
+fi
 launch_args+=("semantic_cpu_threads:=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}"
   "semantic_cpu_nice:=${ACTIVE_SLAM_SEMANTIC_NICE:-0}")
 echo "Semantic CPU settings: threads=${ACTIVE_SLAM_SEMANTIC_THREADS:-0}, nice=${ACTIVE_SLAM_SEMANTIC_NICE:-0}"
@@ -121,6 +152,8 @@ if sys.argv[1]=='full':
     assert params['/exploration_node/handheld_height/enable'] == (os.environ.get('ACTIVE_SLAM_HANDHELD_HEIGHT_LIMIT','false')=='true')
 assert not any(k.startswith('/planning_preview_node/') for k in params)
 PY
+# Everything needed to compare runs later (scene, IR emitter, classes, commit...).
+python3 "$setup_dir/write_run_metadata.py" "$run_dir" "$pipeline" "$test_mode"
 # Preparation starts only camera and RViz; no estimator or map exists yet.
 roslaunch "$setup_dir/all_legacy_planning_only.launch" \
   start_vins:=false start_sloam:=false start_loop:=false \
@@ -165,7 +198,7 @@ rosbag record --lz4 --min-space=2G "${record_args[@]}" -O "$run_dir/sensors.bag"
   /factor_graph_atl/quadrotor/high_freq_odom \
   /factor_graph_atl/quadrotor/sloam_to_vio_odom \
   /exploration_node/handheld_status /planning_vis/handheld_local_path /planning_vis/handheld_goal \
-  /planning_vis/viewpoints /behavior_goal_vis/next_goal \
+  /planning_vis/viewpoints /behavior_goal_vis/next_goal /gt_marker \
   > "$run_dir/record.log" 2>&1 &
 bag_pid=$!
 python - "$pipeline" <<'PY'

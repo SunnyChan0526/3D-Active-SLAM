@@ -8,12 +8,52 @@ import sys
 import time
 
 
+class GroundTruthMarker:
+    """Publishes /gt_marker (std_msgs/String, the label) into the bag.
+
+    setup/eval_ground_truth.py matches each label with the tape-measured
+    position in the scene's ground-truth yaml and compares it with SLAM.
+    """
+    ODOM_TOPICS = ('/factor_graph_atl/quadrotor/high_freq_odom', '/vins_estimator/odometry')
+
+    def __init__(self, rospy):
+        from nav_msgs.msg import Odometry
+        from std_msgs.msg import String
+        self.rospy = rospy
+        self.String = String
+        self.publisher = rospy.Publisher('/gt_marker', String, queue_size=10)
+        self.latest = {}
+        self.count = 0
+        for topic in self.ODOM_TOPICS:
+            rospy.Subscriber(topic, Odometry, self._odom, callback_args=topic, queue_size=1)
+
+    def _odom(self, message, topic):
+        p = message.pose.pose.position
+        self.latest[topic] = (p.x, p.y, p.z)
+
+    def mark(self, label):
+        self.count += 1
+        label = label.replace(' ', '_') or 'unlabeled_{}'.format(self.count)
+        stamp = self.rospy.Time.now()
+        self.publisher.publish(self.String(data=label))
+        entry = {'label': label, 'ros_time': stamp.to_sec(), 'wall_time': time.time()}
+        for topic, xyz in self.latest.items():
+            entry[topic] = [round(v, 3) for v in xyz]
+        estimate = self.latest.get(self.ODOM_TOPICS[0]) or self.latest.get(self.ODOM_TOPICS[1])
+        print('\a【已標記 {}】{}請再保持不動 1 秒。'.format(
+            label, '系統目前估計 x={:.2f} y={:.2f}；'.format(*estimate[:2]) if estimate else ''),
+            flush=True)
+        return entry
+
+
 def main():
     run_dir = Path(sys.argv[1])
     pids = [int(value) for value in sys.argv[2:]]
+    full = os.environ.get('ACTIVE_SLAM_RECORD_FULL', 'false') == 'true'
     metadata = {"mode": "free", "start_wall_time": time.time(),
-                "recording_policy": "rolling 4 x 1024 MB split bags",
-                "planning_attempts": []}
+                "recording_policy": "full session, 1024 MB split bags" if full
+                else "rolling 4 x 1024 MB split bags",
+                "planning_attempts": [], "gt_markers": []}
 
     def save():
         (run_dir / 'free_mapping_session.json').write_text(
@@ -29,6 +69,7 @@ def main():
             'z_samples': int(os.environ.get('ACTIVE_SLAM_HANDHELD_Z_SAMPLES', '3'))}
     save()
     status_subscriber = None
+    marker = None
     try:
         print('\a【初始化後保持靜止】再固定相機 10 秒，接著才開始自由建圖。', flush=True)
         for remaining in range(10, 0, -1):
@@ -38,11 +79,13 @@ def main():
             time.sleep(1)
         print('\a\n【自動探索啟動】請先等候路線或掃描提示。' if automatic else
               '\a\n【自由建圖已開始】現在可以慢走、轉彎、掃描環境，沒有路線或時間限制。', flush=True)
+        import rospy
+        rospy.init_node('handheld_auto_session' if automatic else 'free_mapping_session',
+                        anonymous=True, disable_signals=True)
+        marker = GroundTruthMarker(rospy)
         if automatic:
-            import rospy
             from std_msgs.msg import String
             from std_srvs.srv import SetBool
-            rospy.init_node('handheld_auto_session', anonymous=True, disable_signals=True)
             metadata['status_events'] = []
             def status_callback(message):
                 metadata['status_events'].append({'wall_time': time.time(), 'status': message.data})
@@ -56,6 +99,8 @@ def main():
         else:
             print('規劃：停在離障礙物約 1 公尺的位置，保持相機高度，輸入 p 再按 Enter。', flush=True)
         print('結束：輸入 q 再按 Enter，或 Ctrl+C。原始資料會持續錄製。', flush=True)
+        print('Ground truth：站在檢查點上不動，輸入 m <編號>（例如 m A3）再按 Enter；'
+              '迴環成功時原地不動，輸入 m slc1，之後再用捲尺量腳下位置。', flush=True)
         print('資料位置：' + str(run_dir), flush=True)
         while True:
             for pid in pids:
@@ -67,12 +112,19 @@ def main():
             if not line:
                 print('【結束】終端輸入已關閉，正在保存。', flush=True)
                 break
-            command = line.strip().lower()
+            raw = line.strip()
+            command = raw.lower()
+            if command == 'm' or command.startswith('m '):
+                entry = marker.mark(raw[1:].strip())
+                metadata['gt_markers'].append(entry)
+                save()
+                continue
             if command == 'q':
                 print('【結束】正在保存並停止本輪節點，請稍候。', flush=True)
                 break
             if command != 'p':
-                print('輸入 q 再按 Enter 結束。' if automatic else '輸入 p 再按 Enter 規劃；輸入 q 再按 Enter 結束。', flush=True)
+                print('輸入 m <編號> 標記檢查點；輸入 q 再按 Enter 結束。' if automatic else
+                      '輸入 p 再按 Enter 規劃；m <編號> 標記檢查點；輸入 q 再按 Enter 結束。', flush=True)
                 continue
             if automatic:
                 print('已自動規劃，不需要輸入 p；請依實際路線移動，輸入 q 結束。', flush=True)

@@ -13,6 +13,8 @@
 #   ACTIVESLAM_VINS_TRACK_USED_ONLY 1: VINS tracks only frames its back end uses (Jetson default)
 #   ACTIVESLAM_COLOR_FPS  RealSense color fps (default 30; 15 on Jetson)
 #   ACTIVESLAM_RVIZ_PREFIX launch-prefix for RViz (Jetson default: nice -n 19)
+#   ACTIVESLAM_RESULTS_DIR host directory for recordings (e.g. an external SSD);
+#                      mounted at ~/activeslam_runs and used by record_isolated_vins_test.sh
 #   ACTIVESLAM_JOBS    parallel jobs for image build (default 4)
 #   TORCH_VARIANT      cpu | cu121 for image build   (default cpu)
 set -euo pipefail
@@ -87,6 +89,19 @@ fi
 if [[ -n "${ACTIVESLAM_COLOR_FPS:-}" ]]; then
   yolo_env+=(-e ACTIVESLAM_COLOR_FPS="$ACTIVESLAM_COLOR_FPS")
 fi
+# Jetson power mode and L4T release, written into each run's run_metadata.yaml.
+if [[ -f /etc/nv_tegra_release ]]; then
+  power_mode="$(timeout 3 nvpmodel -q 2>/dev/null | sed -n 's/^NV Power Mode: *//p' | head -n1 || true)"
+  [[ -z "$power_mode" ]] || yolo_env+=(-e ACTIVESLAM_HOST_POWER_MODE="$power_mode")
+  yolo_env+=(-e ACTIVESLAM_HOST_L4T="$(head -n1 /etc/nv_tegra_release | cut -c1-60)")
+fi
+# Recordings on another disk (AGX eMMC is too small for semantic bags).
+results_args=()
+if [[ -n "${ACTIVESLAM_RESULTS_DIR:-}" ]]; then
+  [[ -d "$ACTIVESLAM_RESULTS_DIR" ]] || { echo "ACTIVESLAM_RESULTS_DIR not found: $ACTIVESLAM_RESULTS_DIR"; exit 1; }
+  results_args=(-v "$ACTIVESLAM_RESULTS_DIR:$chome/activeslam_runs")
+  yolo_env+=(-e ACTIVE_SLAM_RESULTS_DIR="$chome/activeslam_runs")
+fi
 
 # Already running -> open another shell / run the command in it.
 if [[ -n "$(docker ps -q -f "name=^${name}$")" ]]; then
@@ -143,7 +158,7 @@ exec docker run --rm "${tty_args[@]}" --name "$name" \
   --privileged -v /dev:/dev -v /run/udev:/run/udev:ro \
   --network host --ipc host \
   "${x_args[@]}" "${gpu_args[@]}" "${yolo_env[@]}" \
-  -v "$repo:$crepo" \
+  -v "$repo:$crepo" "${results_args[@]}" \
   -v "$HOME/vins_output:$chome/vins_output" \
   -v activeslam_realsense_ws:"$chome/realsense_ws" \
   -v activeslam_vins_ws:"$chome/vins_ws" \
