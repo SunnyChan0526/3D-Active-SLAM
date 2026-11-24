@@ -1,6 +1,6 @@
 # 邊緣運算板移植期間的工作路線圖
 
-> 建立：2026-11-16｜更新：2026-11-24 晚，步驟 2 的 ground truth 工具（`feat/ground-truth-step2`）；2026-11-24，AGX Orin 上相機與手持流程修正（`docker` 分支 `e56e672`…`8f47739`）、PR #7（移除寫死路徑）與 PR #8（主機設定腳本）合併進 `docker`（`2e6990d`）之後；11-23 PR #5（Jetson 支援）合併進 `docker`；11-17 晚 PR #1 合併進 main（merge commit `314d3ae`）
+> 建立：2026-11-16｜更新：2026-11-24 晚，步驟 2 的 ground truth 工具（`feat/ground-truth-step2`），並決定先以複現為主、ground truth 延後；2026-11-24，AGX Orin 上相機與手持流程修正（`docker` 分支 `e56e672`…`8f47739`）、PR #7（移除寫死路徑）與 PR #8（主機設定腳本）合併進 `docker`（`2e6990d`）之後；11-23 PR #5（Jetson 支援）合併進 `docker`；11-17 晚 PR #1 合併進 main（merge commit `314d3ae`）
 > 硬體分兩階段：
 > - **開發測試（現在）**：Jetson AGX Orin Developer Kit 64GB，JetPack 6.2（L4T R36.4.3，Ubuntu 22.04），電源模式 `MODE_30W`，eMMC 57 GB。
 > - **最終部署（已確定，11-24）**：AIR6N0-C-MB NX 載板（裸板）＋ Jetson Orin NX 16GB SOM ＋ 512GB SSD ＋ AIR6N0-C-DB NX 擴充板（4×USB3.2-A），JetPack 6.2。
@@ -24,7 +24,7 @@
 
 ## 11-17 實機測試後的結論（main `314d3ae`）
 - ✅ **SLC 端到端第一次真實成功**（`20261117_174344`，`clo96`）：候選 → COP 評估 → 排入路線 → 走到點、原地轉 → 比對成功 → `[Handheld Observed] clo96` → 因子圖加入迴環（`WILL ADD loop closure factor`）→ SLAM 位姿修正。
-- ⚠️ **修正正確性未驗證**：那次位姿在 0.2 秒內跳了約 0.8 m，比對估計的朝向差 7.6°（上限約 9.7°）。可能是真實漂移，也可能是相似椅子誤配，要用步驟 2 的 ground truth 確認。
+- ⚠️ **修正正確性未驗證**：那次位姿在 0.2 秒內跳了約 0.8 m，比對估計的朝向差 7.6°（上限約 9.7°）。可能是真實漂移，也可能是相似椅子誤配，要用步驟 2 的 ground truth 確認（等複現成功後）。
 - ❗ **更正 11-17 早上的判斷**：「論文 VI-B 的 COP 重規劃條件（15% / 10%）已接上」**不正確**。手持模式送出 COP 的程式只寫在無人機分支，這兩個條件以前從未生效。現在已修好，並改成和原作者無人機版**程式**一致的「frontier 變化 ≥15% **且** 完成 ≥10%」。注意：**論文 VI-B 寫的是「或」**（見 `setup/PAPER_PLANNING_AUDIT.md`），11/12 版的「或」才符合論文，但手持相機下每秒成立，造成約 1 Hz 重算。目前的「且」是權宜做法，根本原因可能是 frontier 變化比例的算法（audit 第 7 點）。
 - ✅ 已補上：`loop_closure_submap_node.py` 已啟動；候選參數改 ROS param；錄 bag 可加錄 color／aligned depth（`ACTIVE_SLAM_RECORD_SEMANTIC=true`）與不滾動刪除（`ACTIVE_SLAM_RECORD_FULL=true`）。
 - ⚠️ 手持模式預設關閉 IR emitter，會影響深度品質與語意物件位置（未變）。
@@ -60,6 +60,7 @@
 - 參考：不確定原版流程是否正常時，用 `tmux_sim_closure_submap.launch` 在模擬裡對照；觸發規則可參考 Region Based SLAM-Aware Exploration（arXiv 2504.10416）。
 
 ## 步驟 2｜錄資料、建立 baseline
+> **優先順序（11-24 決定）：目前以複現為主，完整的 ground truth（AprilTag、量檢查點與物體位置）等複現成功後再做。** 工具先放著（PR #9），預設行為不變。複現期間只做最低限度：每輪從同一個起點十字出發、用 `ACTIVE_SLAM_RECORD_FULL=true` 錄完整 bag、迴環成功時在相機正下方貼膠帶並記下時間、結束時走回起點，讓這些 bag 之後還能補做評估。
 > 詳細流程見 [setup/GROUND_TRUTH_PROTOCOL.md](../setup/GROUND_TRUTH_PROTOCOL.md)（11-24 新增）。
 - [x] **Ground truth 工具（11-24，尚未實機測試）**：錄製時輸入 `m <編號>` 留下 `/gt_marker`；場景檔範本 `setup/ground_truth/scene_template.yaml`（檢查點、AprilTag、物體）；`setup/ground_truth/apriltag_offline.sh` 離線偵測 tag；`setup/eval_ground_truth.py` 算檢查點誤差、判斷每次位姿跳動（迴環修正）是對是錯，輸出 TUM 給 `evo`。評估程式有單元測試（`setup/tests/test_eval_ground_truth.py`）。
 - [x] **每輪自動寫 `run_metadata.yaml`（11-24）**：場景、IR emitter、地標類別、ig_weight、git commit、電源模式與相關參數。新增 `ACTIVE_SLAM_DISABLE_IR_EMITTER`（預設 true，和以前一樣）、`ACTIVE_SLAM_OBJECT_CLASSES`（例如 `1` 為原作者的椅子基線）。
@@ -69,7 +70,7 @@
 - [x] 實驗用錄製可關掉滾動刪除：`ACTIVE_SLAM_RECORD_FULL=true`。
 - [ ] **磁碟**：每輪 bag 2–4 GiB（加錄語意後會更大），腳本在剩餘不到 6 GiB 時會拒絕啟動。筆電只有 60 GB；AGX Orin 的 eMMC 57 GB 只剩約 12 GB（11-23，Docker image 佔掉大半），在 AGX 上錄製要先接外接 SSD 或錄完就搬走。最終板子有 512GB SSD，系統與 Docker 資料放 SSD 後這個問題基本解決。11-24 清理後剩約 13 GB；只錄 infra＋IMU（lz4）每分鐘約 0.8 GB，預設滾動保留 4 個 1 GB 分檔。
 - [ ] 決定 IR emitter 的實驗設定（開或關），用 `ACTIVE_SLAM_DISABLE_IR_EMITTER` 設定（會自動記錄在 `run_metadata.yaml`），比較時要用相同的設定。emitter 開著時投影點可能干擾 tag 偵測。
-- [ ] 場景組：物件多、**物件少**（之後拿來驗證 RAVEN 的特徵點 loop closure 備援；比對少於 3 個物體一定失敗，所以分 3 個與 0–2 個兩組）、繞一圈回到起點、白牆走廊（測 VIO 漂移；tag 只貼兩端）。每種錄 3 次以上；ground truth 用 AprilTag 加捲尺。**優先用 ground truth 驗證 11-17 那次 0.8 m 的 SLC 修正是否正確。**
+- [ ] 場景組：物件多、**物件少**（之後拿來驗證 RAVEN 的特徵點 loop closure 備援；比對少於 3 個物體一定失敗，所以分 3 個與 0–2 個兩組）、繞一圈回到起點、白牆走廊（測 VIO 漂移；tag 只貼兩端）。每種錄 3 次以上；ground truth 用 AprilTag 加捲尺。**複現成功後，第一件事是用 ground truth 驗證 11-17 那次 0.8 m 的 SLC 修正是否正確。**
   - 0.8 m 小於現在 1 m 的拒絕門檻，同樣的修正現在仍會被接受，所以仍需驗證。11-17 那輪沒有記下實際位置，而且是滾動錄製，只能事後粗略判斷（路線 A）；主要做法是在同一個房間、同樣擺法重現並標記迴環點（路線 B），累積至少 3 次成功的迴環再下結論。
 - [ ] 注意：原作者實際上**只把椅子**建成地標（`process_cloud_node.py` 只取標號 1）；11-18 起手持設定改為椅子、餐桌、電視三類（`object_class_labels`），基線實驗要記得設回 `[1]`（重播時 `ACTIVE_SLAM_OBJECT_CLASSES=1`）。場景設計要避免一排等距、長得一樣的椅子（11-18 實測會造成比對無法確定），並讓桌子、電視和椅子能一起被看到。
 - [ ] 指標：回到起點時的位置與 yaw 誤差、物件間距離誤差、SLC 成功率與誤判次數、pose 協方差 trace。評估程式已涵蓋回到起點誤差、檢查點誤差與迴環修正對錯；物件間距離誤差與協方差 trace 還沒做。
