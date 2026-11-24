@@ -82,11 +82,12 @@
 - [x] 確定板子：開發測試用 AGX Orin 64GB，最終用 AIR6N0 載板＋Orin NX 16GB（見開頭）。JetPack 6.2 是 Ubuntu 22.04，沒有原生 Noetic，改用 Ubuntu 20.04／Noetic 的 Docker image。可以參考 Perception-Aware Exploration in Feature-Limited Environments（arXiv 2603.15605）在 Jetson Orin NX 上的配置。
 - [x] ARM64 Docker（commit `2f02faa`）：主容器 `activeslam:noetic`（Ubuntu 20.04，torch 2.4.1、open3d 0.14.1，以 LD_PRELOAD 解決 libgomp 的 static TLS 問題；Jetson 上不開 GPU passthrough，因為主機的 L4T 函式庫和 20.04 不相容）；GPU YOLO 另外跑在 `activeslam-yolo-gpu:r36.4`（`dustynv/l4t-pytorch:r36.4.0`，CUDA 12.6），透過 localhost TCP 提供給 `detect.py`。其他依賴版本見 `local_migration_status.txt`：GTSAM 4.0.3、Ceres 2.0.0、fmt 8.0.0、glog 0.6.0、Sophus `49a7e128`、RealSense SDK 2.50.0（Jetson 上另有 2.54.2 的 `activeslam:noetic-rs254`）。
 - [x] `docker/Dockerfile.rs` 已納入 repo（`e56e672`）：在 `activeslam:noetic` 上把 librealsense 換成 2.54.2（RSUSB）。build context 需要另外放 librealsense 原始碼壓縮檔與 CA bundle（見檔頭說明）；換 image 後 `realsense_ws` 要重建一次。
-- [ ] **板子上的系統設定要寫進文件或腳本**，到 NX 上才能重現：PipeWire 關掉 v4l2 監控（使用者設定檔）、USB autosuspend（目前是暫時設成 -1，重開機會還原）、`uvcvideo` 是否需要卸載（目前效果未證實）。
+- [x] **板子上的系統設定已寫成腳本（11-24）**：`setup/jetson_host_setup.sh`（預設只檢查，`--apply` 套用），說明在 `setup/JETSON_HOST_SETUP.md`。PipeWire 關 v4l2 監控（使用者設定）；USB autosuspend 改成持久設定（systemd 開機寫入 -1，加上 RealSense udev `power/control=on`）；`uvcvideo` 只檢查不改（效果未證實）。
+  - [ ] 在 AGX 上先跑檢查模式，確認結果和目前手動設定一致（特別是 `~/.config/pipewire/...` 的內容），再 `--apply` 並重開機驗證。
 - [ ] Jetson 專用的預設值都在 `docker/run.sh`（`ACTIVESLAM_COLOR_FPS=15`、`ACTIVESLAM_CAMERA_ALIGN=false`、`ACTIVESLAM_RVIZ_PREFIX="nice -n 19"`、`ACTIVESLAM_VINS_TRACK_USED_ONLY=1`）；到 NX 上要逐項重新驗證。
 - [x] **NX 上用 JetPack 6.2**（11-24 確定）：和 AGX 一樣是 L4T R36.4.x，兩個 Docker image 可以直接沿用（YOLO 容器的 `r36.4` base 必須和主機 L4T 版本相符）。
 - [ ] **仍要向載板廠商確認**：是否要刷廠商提供的 BSP（第三方載板通常需要）、能否從 NVMe SSD 開機、擴充板 4×USB3.2-A 的驅動、載板的供電與散熱是否支援 MAXN Super。
-- [ ] **到貨第一天檢查清單**：刷廠商 BSP 並把系統裝到 SSD → `nvpmodel` 設定並記錄電源模式 → 載入（或重建）兩個 Docker image → `setup/docker_smoke_test.sh` → 確認 RealSense D435i 接在 USB3 埠且以 USB 3.x 連線（`rs-enumerate-devices`）→ 重新產生 TensorRT engine → 重播 1–2 個 AGX 上錄的 bag，確認定位、語意、規劃的結果和 AGX 相近（這是移植檢查，不是板子之間的比較實驗），並量 NX 的 CPU、記憶體與延遲 → 重新驗證 `docker/run.sh` 的 Jetson 預設值。
+- [ ] **到貨第一天檢查清單**：刷廠商 BSP 並把系統裝到 SSD → `bash setup/jetson_host_setup.sh --apply` → `nvpmodel` 設定並記錄電源模式 → 載入（或重建）兩個 Docker image → `setup/docker_smoke_test.sh` → 確認 RealSense D435i 接在 USB3 埠且以 USB 3.x 連線（`rs-enumerate-devices`）→ 重新產生 TensorRT engine → 重播 1–2 個 AGX 上錄的 bag，確認定位、語意、規劃的結果和 AGX 相近（這是移植檢查，不是板子之間的比較實驗），並量 NX 的 CPU、記憶體與延遲 → 重新驗證 `docker/run.sh` 的 Jetson 預設值。
 
 ## 步驟 5｜飛行前的閉環驗證（模擬）
 - [ ] 先在原專案的模擬（`tmux_sim_slam.sh`、mrsl_quadrotor、kr_mav_control）跑完整的探索、規劃、軌跡閉環，也可以當作 SLC 流程的參考答案。
