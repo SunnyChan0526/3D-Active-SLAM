@@ -89,7 +89,7 @@ check() {
 }
 
 apply_pipewire() {
-  local sm; sm="$(session_manager)"
+  local sm changed=false; sm="$(session_manager)"
   if [[ "$sm" == wireplumber ]]; then
     echo "wireplumber detected: not handled, disable its v4l2 monitor by hand (see JETSON_HOST_SETUP.md)."
     return
@@ -99,13 +99,17 @@ apply_pipewire() {
     mkdir -p "$(dirname "$ms_user_conf")"
     cp "$ms_sys_conf" "$ms_user_conf"
     echo "copied $ms_sys_conf -> $ms_user_conf"
+    changed=true
   fi
   if v4l2_enabled "$ms_user_conf"; then
     cp "$ms_user_conf" "$ms_user_conf.bak.$(date +%Y%m%d%H%M%S)"
     sed -i -E 's/^([[:space:]]*)(v4l2([[:space:]#].*)?)$/\1#\2  # ActiveSLAM: grabs the RealSense/' "$ms_user_conf"
     echo "disabled v4l2 in $ms_user_conf"
+    changed=true
   fi
-  if [[ "$sm" == media-session ]]; then
+  if ! $changed; then
+    echo "PipeWire: v4l2 already disabled, nothing changed, not restarting"
+  elif [[ "$sm" == media-session ]]; then
     systemctl --user restart pipewire pipewire-media-session 2>/dev/null \
       && echo "restarted pipewire + media-session" \
       || echo "could not restart pipewire; log out/in or reboot"
