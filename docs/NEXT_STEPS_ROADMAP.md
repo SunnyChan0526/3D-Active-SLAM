@@ -3,7 +3,7 @@
 > 建立：2026-11-16｜更新：2026-11-24，AGX Orin 上相機與手持流程修正（`docker` 分支 `e56e672`…`8f47739`）之後；11-23 PR #5（Jetson 支援）合併進 `docker`；11-17 晚 PR #1 合併進 main（merge commit `314d3ae`）
 > 硬體分兩階段：
 > - **開發測試（現在）**：Jetson AGX Orin Developer Kit 64GB，JetPack 6.2（L4T R36.4.3，Ubuntu 22.04），電源模式 `MODE_30W`，eMMC 57 GB。
-> - **最終部署**：AIR6N0-C-MB NX 載板（裸板）＋ Jetson Orin NX 16GB SOM ＋ 512GB SSD ＋ AIR6N0-C-DB NX 擴充板（4×USB3.2-A）。
+> - **最終部署（已確定，11-24）**：AIR6N0-C-MB NX 載板（裸板）＋ Jetson Orin NX 16GB SOM ＋ 512GB SSD ＋ AIR6N0-C-DB NX 擴充板（4×USB3.2-A），JetPack 6.2。
 > - AGX Orin 64GB 的效能數字**不能代表** Orin NX 16GB（GPU 核心約一半、CPU 核心較少、16 GB 由 CPU 與 GPU 共用），正式數字要在 NX（或 AGX 的 NX 模擬模式）上量。
 >
 > 原則：全程維持 `fsm/planning_only=true`；不為了 demo 放寬碰撞、膨脹半徑或動態限制。
@@ -83,8 +83,9 @@
 - [x] `docker/Dockerfile.rs` 已納入 repo（`e56e672`）：在 `activeslam:noetic` 上把 librealsense 換成 2.54.2（RSUSB）。build context 需要另外放 librealsense 原始碼壓縮檔與 CA bundle（見檔頭說明）；換 image 後 `realsense_ws` 要重建一次。
 - [ ] **板子上的系統設定要寫進文件或腳本**，到 NX 上才能重現：PipeWire 關掉 v4l2 監控（使用者設定檔）、USB autosuspend（目前是暫時設成 -1，重開機會還原）、`uvcvideo` 是否需要卸載（目前效果未證實）。
 - [ ] Jetson 專用的預設值都在 `docker/run.sh`（`ACTIVESLAM_COLOR_FPS=15`、`ACTIVESLAM_CAMERA_ALIGN=false`、`ACTIVESLAM_RVIZ_PREFIX="nice -n 19"`、`ACTIVESLAM_VINS_TRACK_USED_ONLY=1`）；到 NX 上要逐項重新驗證。
-- [ ] **向載板廠商確認 AIR6N0-C-MB 支援的 JetPack／L4T 版本與 BSP**。第三方載板通常要刷廠商提供的 BSP；最好和 AGX 一樣是 R36.4.x（JetPack 6.2），兩個 Docker image 才能直接沿用（YOLO 容器的 `r36.4` base 必須和主機 L4T 版本相符）。同時確認：從 NVMe SSD 開機、擴充板 4×USB3.2-A 的驅動、MAXN Super 是否支援。
-- [ ] **到貨第一天檢查清單**：刷廠商 BSP 並把系統裝到 SSD → `nvpmodel` 設定並記錄電源模式 → 載入（或重建）兩個 Docker image → `setup/docker_smoke_test.sh` → 確認 RealSense D435i 接在 USB3 埠且以 USB 3.x 連線（`rs-enumerate-devices`）→ 重新產生 TensorRT engine → 重播同一批 bag，和 AGX、筆電的指標比較。
+- [x] **NX 上用 JetPack 6.2**（11-24 確定）：和 AGX 一樣是 L4T R36.4.x，兩個 Docker image 可以直接沿用（YOLO 容器的 `r36.4` base 必須和主機 L4T 版本相符）。
+- [ ] **仍要向載板廠商確認**：是否要刷廠商提供的 BSP（第三方載板通常需要）、能否從 NVMe SSD 開機、擴充板 4×USB3.2-A 的驅動、載板的供電與散熱是否支援 MAXN Super。
+- [ ] **到貨第一天檢查清單**：刷廠商 BSP 並把系統裝到 SSD → `nvpmodel` 設定並記錄電源模式 → 載入（或重建）兩個 Docker image → `setup/docker_smoke_test.sh` → 確認 RealSense D435i 接在 USB3 埠且以 USB 3.x 連線（`rs-enumerate-devices`）→ 重新產生 TensorRT engine → 重播 1–2 個 AGX 上錄的 bag，確認定位、語意、規劃的結果和 AGX 相近（這是移植檢查，不是板子之間的比較實驗），並量 NX 的 CPU、記憶體與延遲 → 重新驗證 `docker/run.sh` 的 Jetson 預設值。
 
 ## 步驟 5｜飛行前的閉環驗證（模擬）
 - [ ] 先在原專案的模擬（`tmux_sim_slam.sh`、mrsl_quadrotor、kr_mav_control）跑完整的探索、規劃、軌跡閉環，也可以當作 SLC 流程的參考答案。
