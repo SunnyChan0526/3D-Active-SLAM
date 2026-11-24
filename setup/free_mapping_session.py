@@ -100,7 +100,7 @@ def main():
             print('規劃：停在離障礙物約 1 公尺的位置，保持相機高度，輸入 p 再按 Enter。', flush=True)
         print('結束：輸入 q 再按 Enter，或 Ctrl+C。原始資料會持續錄製。', flush=True)
         print('Ground truth：站在檢查點上不動，輸入 m <編號>（例如 m A3）再按 Enter；'
-              '迴環成功時原地不動，輸入 m slc1，之後再用捲尺量腳下位置。', flush=True)
+              '迴環成功時相機原地不動，輸入 m slc1，在相機正下方的地上貼膠帶，錄完再量。', flush=True)
         print('資料位置：' + str(run_dir), flush=True)
         while True:
             for pid in pids:
