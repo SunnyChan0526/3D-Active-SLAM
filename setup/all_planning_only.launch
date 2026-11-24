@@ -10,6 +10,8 @@
   <arg name="start_rviz" default="true"/>
   <!-- Jetson sets 15 via docker/run.sh: align_depth at 30 fps starves the CPU there. -->
   <arg name="color_fps" default="$(optenv ACTIVESLAM_COLOR_FPS 30)"/>
+  <!-- false: register depth in setup/depth_register.launch instead (Jetson, via docker/run.sh). -->
+  <arg name="camera_align" default="$(optenv ACTIVESLAM_CAMERA_ALIGN true)"/>
 
   <include if="$(arg start_camera)" file="$(find realsense2_camera)/launch/rs_camera.launch">
     <arg name="enable_color" value="true"/>
@@ -29,8 +31,11 @@
     <arg name="enable_gyro" value="true"/>
     <arg name="enable_accel" value="true"/>
     <arg name="unite_imu_method" value="linear_interpolation"/>
-    <arg name="align_depth" value="true"/>
+    <arg name="align_depth" value="$(arg camera_align)"/>
   </include>
+  <group if="$(arg start_camera)">
+    <include unless="$(arg camera_align)" file="$(dirname)/depth_register.launch"/>
+  </group>
   <node if="$(arg start_vins)" pkg="vins" type="vins_node" name="vins_estimator"
         args="$(env HOME)/vins_ws/src/VINS-Fusion/config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
   <include if="$(arg start_loop)" file="$(find loop_closure)/launch/loop_closure_node.launch"/>

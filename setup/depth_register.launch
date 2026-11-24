@@ -1,0 +1,17 @@
+<launch>
+  <!-- Registers depth to the color camera outside the RealSense driver and
+       publishes the same topics as the driver's align_depth. On the Jetson the
+       driver's CPU align falls behind, exhausts librealsense's frame pool and
+       the depth/infra USB stream stalls (infra stops, VINS never starts).
+       A separate process can lag without touching the driver. -->
+  <node pkg="nodelet" type="nodelet" name="depth_register_manager" args="manager" output="log"/>
+  <node pkg="nodelet" type="nodelet" name="depth_register" output="log"
+        args="load depth_image_proc/register depth_register_manager">
+    <remap from="rgb/camera_info" to="/camera/color/camera_info"/>
+    <remap from="depth/camera_info" to="/camera/depth/camera_info"/>
+    <remap from="depth/image_rect" to="/camera/depth/image_rect_raw"/>
+    <remap from="depth_registered/image_rect" to="/camera/aligned_depth_to_color/image_raw"/>
+    <remap from="depth_registered/camera_info" to="/camera/aligned_depth_to_color/camera_info"/>
+    <param name="queue_size" value="10"/>
+  </node>
+</launch>

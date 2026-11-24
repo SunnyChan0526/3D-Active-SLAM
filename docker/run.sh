@@ -9,6 +9,7 @@
 # Env overrides:
 #   ACTIVESLAM_IMAGE   image tag              (default activeslam:noetic)
 #   ACTIVESLAM_GPU     auto | on | off        (default auto: use NVIDIA if available)
+#   ACTIVESLAM_CAMERA_ALIGN RealSense driver align_depth (default true; false on Jetson)
 #   ACTIVESLAM_COLOR_FPS  RealSense color fps (default 30; 15 on Jetson)
 #   ACTIVESLAM_RVIZ_PREFIX launch-prefix for RViz (Jetson default: nice -n 19)
 #   ACTIVESLAM_JOBS    parallel jobs for image build (default 4)
@@ -48,6 +49,9 @@ if [[ -f /etc/nv_tegra_release ]]; then
     image=activeslam:noetic-rs254
   fi
   : "${ACTIVESLAM_COLOR_FPS:=15}"
+  # The driver's CPU align_depth stalls the depth/infra USB stream here; use
+  # depth_image_proc in its own process instead (setup/depth_register.launch).
+  : "${ACTIVESLAM_CAMERA_ALIGN:=false}"
   # RViz renders on the CPU here (llvmpipe) and starves the RealSense nodelet
   # (infra/IMU stop at startup); run it at the lowest priority.
   : "${ACTIVESLAM_RVIZ_PREFIX=nice -n 19}"
@@ -69,6 +73,9 @@ fi
 yolo_env=(-e ACTIVESLAM_YOLO_SERVER="${ACTIVESLAM_YOLO_SERVER:-}")
 if [[ -n "${ACTIVESLAM_RVIZ_PREFIX:-}" ]]; then
   yolo_env+=(-e ACTIVESLAM_RVIZ_PREFIX="$ACTIVESLAM_RVIZ_PREFIX")
+fi
+if [[ -n "${ACTIVESLAM_CAMERA_ALIGN:-}" ]]; then
+  yolo_env+=(-e ACTIVESLAM_CAMERA_ALIGN="$ACTIVESLAM_CAMERA_ALIGN")
 fi
 if [[ -n "${ACTIVESLAM_COLOR_FPS:-}" ]]; then
   yolo_env+=(-e ACTIVESLAM_COLOR_FPS="$ACTIVESLAM_COLOR_FPS")
