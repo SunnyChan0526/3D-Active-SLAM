@@ -15,6 +15,8 @@ sudo cp setup/99-realsense-libusb.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
+**Jetson 主機**另外要跑 `bash setup/jetson_host_setup.sh --apply`（PipeWire 關 v4l2 監控、USB autosuspend），說明見 [setup/JETSON_HOST_SETUP.md](../setup/JETSON_HOST_SETUP.md)。
+
 建議登入時選擇「Ubuntu on Xorg」，RViz 在 Wayland 下比較容易出問題。
 
 （選用）用 NVIDIA GPU 跑 RViz 和 YOLO：先安裝 NVIDIA 驅動和
