@@ -42,7 +42,8 @@
 - [x] 原 PROJECT_STATUS.md 改名為 SYSTEM_OVERVIEW.md，改成以 repo 為準，寫進手持自動模式與 11-17 的 SLC 結果；與本 roadmap 一起放進 `docs/`（11-17）。
 - [x] README 裡的 clone 網址改成實際網址（11-17）。
 - [ ] 清理：repo 裡還追蹤著 6 個 `.bak` 或 `*.before_*` 檔，以及 `src/kr_3d_active_ms_slam/backups/`（7.7 MB）。有 Git 歷史之後可以刪掉。根目錄的舊移植包 `kr3d_migration_20261103_161146*` 沒有進 git，只佔本機空間，確認不再需要就可以刪。
-- [ ] **路徑（板子上已經會遇到，優先處理）**：還有 9 個 tracked 檔案含 `/home/sunny`（Jetson 上的帳號是 `nvidia`）；launch 裡寫死了 `$(env HOME)/Desktop/ActiveSLAM_move2Laptop`，要改成 `$(find pkg)` 或環境變數。
+- [x] **路徑（11-24）**：執行路徑上的寫死路徑已移除——兩個 launch 的 VINS 設定改用 `$(find vins)/../config/...`、`vins_launch_prefix.sh` 改用 `$(dirname)`；`install_ros_base.sh` 的 log 目錄改由腳本位置推得；`tmux_sim_slam.sh` 改用 `$HOME`。Docker 內的 `/home/evil1323/Desktop/ActiveSLAM_move2Laptop` 是容器內固定掛載點（`docker/run.sh` 由腳本位置找主機 repo），與主機帳號無關，保留。
+  - [ ] 剩下：VINS 設定檔 `output_path`／`pose_graph_save_path` 寫死 `/home/evil1323/vins_output/`（容器內正確，原生安裝要改）；文件裡的 `~/Desktop/ActiveSLAM_move2Laptop` 範例路徑、`backups/`、`*_backup.yaml` 與 `*.original.yaml` 內的 `/home/sunny` 隨清理一併處理。
 - [x] Jetson 上的修改已同步回 GitHub（11-24）：Jetson 支援經 PR #5 合併；之後的相機與 VINS 修正改接在 `origin/docker` 上推送。板子上的 repo 已設好 `origin` 並追蹤 `origin/docker`，原本的 ZIP 快照歷史留在本機分支 `docker-zip-backup`（確認不需要後可刪）。
 - [ ] 刪除已合併的分支 `fix/slc-candidates-and-semantic-bag`（本機與 GitHub）。
 

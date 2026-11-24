@@ -2,7 +2,7 @@
 set -euo pipefail
 source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 20.04 ]] || { echo 'Requires Ubuntu 20.04'; exit 1; }
-log_dir="$HOME/Desktop/ActiveSLAM_move2Laptop/setup"
+log_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$log_dir"
 exec > >(tee -a "$log_dir/install_ros_base.log") 2>&1
 sudo -v

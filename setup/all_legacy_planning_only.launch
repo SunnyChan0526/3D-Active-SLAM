@@ -64,8 +64,8 @@
   <!-- Optional VIO diagnostic: projected IR dots may impair feature tracking.
        Camera calibration and estimator parameters are left unchanged. -->
   <node if="$(arg start_vins)" pkg="vins" type="vins_node" name="vins_estimator"
-        launch-prefix="$(env HOME)/Desktop/ActiveSLAM_move2Laptop/setup/vins_launch_prefix.sh $(arg disable_ir_emitter)"
-        args="$(env HOME)/vins_ws/src/VINS-Fusion/config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
+        launch-prefix="$(dirname)/vins_launch_prefix.sh $(arg disable_ir_emitter)"
+        args="$(find vins)/../config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
   <include if="$(arg start_loop)" file="$(find loop_closure)/launch/loop_closure_node.launch"/>
   <node if="$(arg start_loop_candidates)" pkg="scan2shape_launch" type="loop_closure_submap_node.py"
         name="loop_closure_submap_node" output="screen">

@@ -158,7 +158,7 @@ RViz 裡橘色箭頭是探索目標（`ftr`），紫色箭頭是 SLC 目標（`c
 - **IR emitter**：手持模式預設關閉（為了 VINS 特徵追蹤），會影響深度品質與物件位置。
 - **COP 偶爾回傳 0 個目標**：系統約每秒重新請求，約 30 秒後自行恢復。
 - **邊緣運算板效能未量測**：yolov8x-seg 很大；Python DBSCAN；每次評估 SLC 都要算 marginalCovariance；迴環比對隨偵測數階乘成長。
-- **路徑寫死**：9 個 tracked 檔案含 `/home/sunny`；launch 裡寫死 `$(env HOME)/Desktop/ActiveSLAM_move2Laptop`。
+- **路徑寫死**：執行路徑已改為相對位置（11-24）；VINS 設定檔的 `output_path` 仍寫死容器使用者 `/home/evil1323/vins_output/`，文件與備份檔仍有舊路徑。
 
 ## 5. 在新電腦上恢復環境
 

@@ -37,7 +37,7 @@
     <include unless="$(arg camera_align)" file="$(dirname)/depth_register.launch"/>
   </group>
   <node if="$(arg start_vins)" pkg="vins" type="vins_node" name="vins_estimator"
-        args="$(env HOME)/vins_ws/src/VINS-Fusion/config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
+        args="$(find vins)/../config/realsense_d435i_sunny/realsense_stereo_imu_config.yaml" output="screen"/>
   <include if="$(arg start_loop)" file="$(find loop_closure)/launch/loop_closure_node.launch"/>
   <include if="$(arg start_sloam)" file="$(find sloam)/launch/run_indoor_large_scale_exploration_sunny.launch">
     <arg name="enable_rviz" value="false"/>

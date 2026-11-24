@@ -8,7 +8,7 @@ ODOM_TOPIC=ground_truth/odom
 echo "MAV name: $MAV_NAME MAV Type: $MAV_TYPE"
 
 MASTER_URI=http://localhost:11311
-SETUP_ROS_STRING="source /opt/ros/noetic/setup.bash; source /home/sunny/active_ms_slam_ws/devel/setup.bash; export ROS_MASTER_URI=${MASTER_URI}"
+SETUP_ROS_STRING="source /opt/ros/noetic/setup.bash; source $HOME/active_ms_slam_ws/devel/setup.bash; export ROS_MASTER_URI=${MASTER_URI}"
 SESSION_NAME=sim_exp
 
 CURRENT_DISPLAY=${DISPLAY}
