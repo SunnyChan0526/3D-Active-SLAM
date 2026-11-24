@@ -8,6 +8,8 @@
  *******************************************************/
 
 #include "estimator.h"
+#include <cstdlib>
+#include <string>
 #include "../utility/visualization.h"
 
 Estimator::Estimator(): f_manager{Rs}
@@ -160,6 +162,16 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
     inputImageCnt++;
+    // In multi-thread mode the back end only takes every 2nd frame. On the
+    // Jetson, tracking (and drawing) the frames it drops as well keeps the
+    // front end behind the camera, images queue up and odometry lags ~0.5 s.
+    // ACTIVESLAM_VINS_TRACK_USED_ONLY=1 (set by docker/run.sh on Jetson) skips them.
+    static const bool track_used_only = [] {
+        const char *e = getenv("ACTIVESLAM_VINS_TRACK_USED_ONLY");
+        return e != nullptr && std::string(e) == "1";
+    }();
+    if (MULTIPLE_THREAD && track_used_only && inputImageCnt % 2 != 0)
+        return;
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
     TicToc featureTrackerTime;
 
