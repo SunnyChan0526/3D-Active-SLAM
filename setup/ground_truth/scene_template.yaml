@@ -1,0 +1,40 @@
+# Ground truth for one scene (copy per scene, e.g. ground_truth/room_1118.yaml).
+# Measure with a tape measure or laser rangefinder; units are metres and degrees.
+#
+# World frame = the SLAM world at start-up (same as ACTIVE_SLAM_ROOM_*):
+#   origin   = the start mark on the floor (tape cross), under the camera
+#   +Y       = the start heading (tape line in front of the start mark)
+#   -X       = left of the start heading, +X = right
+#   z        = height above the FLOOR (the evaluator subtracts start_camera_height_m)
+# Measure X along the left/right line and Y along the heading line, at right angles.
+
+scene: room_1118                 # free text; also set ACTIVE_SLAM_SCENE when recording
+measured_on: 2026-11-25
+measured_by: sunny
+start_camera_height_m: 0.40      # camera height above the floor at start-up
+start_yaw_deg: 90                # start heading in this frame (+Y = 90); leave as is
+
+# Floor checkpoints. Stand on one, keep still, type "m <label>" in the
+# recording terminal. "start" is the start mark itself (return-to-start error).
+# yaw_deg is optional: the direction the camera faces when you mark it
+# (only fill it in when you line the camera up with a tape line).
+markers:
+  start: {x: 0.0, y: 0.0, yaw_deg: 90}
+  A1:    {x: 0.0, y: 1.0}
+  A2:    {x: 0.0, y: 2.0}
+  B1:    {x: -1.0, y: 1.0}
+  # slc1: {x: ..., y: ...}       # measured after the run where you stood at the SLC
+
+# AprilTags (tag36h11) on walls, vertical. x/y/z = tag centre (z above the floor).
+# facing_yaw_deg = direction the printed face points to (its outward normal),
+# e.g. a tag on the far wall facing back towards the start points to -Y = -90.
+# size_m = black square edge length (not the white border).
+tags:
+  0: {x: 0.0, y: 6.0, z: 0.45, facing_yaw_deg: -90, size_m: 0.16}
+  1: {x: -3.2, y: 2.0, z: 0.45, facing_yaw_deg: 0, size_m: 0.16}
+
+# Object centres (optional): for landmark position and object-to-object distance errors.
+# class: 1 chair, 2 dining table, 3 tv (same as object_class_labels)
+objects:
+  chair_1: {class: 1, x: 1.0, y: 3.0}
+  table_1: {class: 2, x: -1.5, y: 4.0}
