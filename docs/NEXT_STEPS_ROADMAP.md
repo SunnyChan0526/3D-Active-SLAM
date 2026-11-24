@@ -1,6 +1,6 @@
 # 邊緣運算板移植期間的工作路線圖
 
-> 建立：2026-11-16｜更新：2026-11-24，AGX Orin 上相機與手持流程修正（`docker` 分支 `e56e672`…`8f47739`）之後；11-23 PR #5（Jetson 支援）合併進 `docker`；11-17 晚 PR #1 合併進 main（merge commit `314d3ae`）
+> 建立：2026-11-16｜更新：2026-11-24，AGX Orin 上相機與手持流程修正（`docker` 分支 `e56e672`…`8f47739`）、PR #7（移除寫死路徑）與 PR #8（主機設定腳本）合併進 `docker`（`2e6990d`）之後；11-23 PR #5（Jetson 支援）合併進 `docker`；11-17 晚 PR #1 合併進 main（merge commit `314d3ae`）
 > 硬體分兩階段：
 > - **開發測試（現在）**：Jetson AGX Orin Developer Kit 64GB，JetPack 6.2（L4T R36.4.3，Ubuntu 22.04），電源模式 `MODE_30W`，eMMC 57 GB。
 > - **最終部署（已確定，11-24）**：AIR6N0-C-MB NX 載板（裸板）＋ Jetson Orin NX 16GB SOM ＋ 512GB SSD ＋ AIR6N0-C-DB NX 擴充板（4×USB3.2-A），JetPack 6.2。
@@ -19,6 +19,7 @@
 - ✅ 相機靜止的完整流程（相機＋RViz＋rosbag＋語意＋規劃）：沒有節點掛掉，VINS 15 Hz、靜止漂移約 1 mm，語意點雲約 1.9 Hz，地圖約 4.3 Hz，規劃器有輸出路線。
 - ⚠️ **還沒做移動中的手持測試**。前端改成每秒追蹤 15 幀，快速轉動時要確認不會跟丟。
 - ⚠️ 之前在相機靜止時看過兩個問題，這次沒有重現，仍需追蹤：`active_slam_input_node` 加入語意因子時 gtsam `IndeterminantLinearSystemException`；VINS 偶爾發散（Eigen assertion）。
+- ✅ **程式碼整理**：PR #7 移除執行路徑上的寫死路徑，在 AGX 上跑完整流程（相機＋RViz＋語意＋規劃）測過，結果和修改前相同；PR #8 加入主機設定腳本 `setup/jetson_host_setup.sh`，在 AGX 上跑過檢查模式，還沒 `--apply`。兩個都已合併進 `docker`。
 - 操作注意：腳本異常結束時容器可能殘留，之後 `docker/run.sh` 會進到舊容器、ROS master 衝突。重跑前先 `docker ps`，有 `activeslam` 就 `docker stop activeslam`。
 
 ## 11-17 實機測試後的結論（main `314d3ae`）
@@ -42,10 +43,11 @@
 - [x] 原 PROJECT_STATUS.md 改名為 SYSTEM_OVERVIEW.md，改成以 repo 為準，寫進手持自動模式與 11-17 的 SLC 結果；與本 roadmap 一起放進 `docs/`（11-17）。
 - [x] README 裡的 clone 網址改成實際網址（11-17）。
 - [ ] 清理：repo 裡還追蹤著 6 個 `.bak` 或 `*.before_*` 檔，以及 `src/kr_3d_active_ms_slam/backups/`（7.7 MB）。有 Git 歷史之後可以刪掉。根目錄的舊移植包 `kr3d_migration_20261103_161146*` 沒有進 git，只佔本機空間，確認不再需要就可以刪。
-- [x] **路徑（11-24）**：執行路徑上的寫死路徑已移除——兩個 launch 的 VINS 設定改用 `$(find vins)/../config/...`、`vins_launch_prefix.sh` 改用 `$(dirname)`；`install_ros_base.sh` 的 log 目錄改由腳本位置推得；`tmux_sim_slam.sh` 改用 `$HOME`。Docker 內的 `/home/evil1323/Desktop/ActiveSLAM_move2Laptop` 是容器內固定掛載點（`docker/run.sh` 由腳本位置找主機 repo），與主機帳號無關，保留。
+- [x] **路徑（11-24）**：執行路徑上的寫死路徑已移除——兩個 launch 的 VINS 設定改用 `$(find vins)/../config/...`、`vins_launch_prefix.sh` 改用 `$(dirname)`；`install_ros_base.sh` 的 log 目錄改由腳本位置推得；`tmux_sim_slam.sh` 改用 `$HOME`（PR #7，AGX 完整流程測試通過）。Docker 內的 `/home/evil1323/Desktop/ActiveSLAM_move2Laptop` 是容器內固定掛載點（`docker/run.sh` 由腳本位置找主機 repo），與主機帳號無關，保留。
   - [ ] 剩下：VINS 設定檔 `output_path`／`pose_graph_save_path` 寫死 `/home/evil1323/vins_output/`（容器內正確，原生安裝要改）；文件裡的 `~/Desktop/ActiveSLAM_move2Laptop` 範例路徑、`backups/`、`*_backup.yaml` 與 `*.original.yaml` 內的 `/home/sunny` 隨清理一併處理。
-- [x] Jetson 上的修改已同步回 GitHub（11-24）：Jetson 支援經 PR #5 合併；之後的相機與 VINS 修正改接在 `origin/docker` 上推送。板子上的 repo 已設好 `origin` 並追蹤 `origin/docker`，原本的 ZIP 快照歷史留在本機分支 `docker-zip-backup`（確認不需要後可刪）。
-- [ ] 刪除已合併的分支 `fix/slc-candidates-and-semantic-bag`（本機與 GitHub）。
+- [x] Jetson 上的修改已同步回 GitHub（11-24）：Jetson 支援經 PR #5 合併；之後的相機與 VINS 修正改接在 `origin/docker` 上推送。板子上的 repo 已設好 `origin` 並追蹤 `origin/docker`，原本的 ZIP 快照分支 `docker-zip-backup` 已刪除。
+- [x] 刪除已合併的分支（11-24）：`fix/slc-candidates-and-semantic-bag`、`fix/hardcoded-paths`（PR #7）、`fix/jetson-host-setup`（PR #8）等。GitHub 上現在只剩 `main`、`docker`、`fix/slc-false-match-and-duplicates`。
+- [ ] `docker` 合併回 `main`；之後刪除 `fix/slc-false-match-and-duplicates`（已合進 `docker`，還沒進 `main`）。
 
 ## 步驟 1｜讓語意 loop closure 真的觸發 —— ✅ 流程已打通（11-17）
 - [x] 在 launch 加入 `loop_closure_submap_node.py`（跟隨 `start_loop`，不設 `use_sim_time`）。
@@ -60,7 +62,7 @@
 ## 步驟 2｜錄資料、建立 baseline
 - [x] 在 `record_isolated_vins_test.sh` 補錄語意需要的 topic（color、aligned depth 與各自的 camera_info）：`ACTIVE_SLAM_RECORD_SEMANTIC=true`，約 25–45 MB/s。
 - [x] 實驗用錄製可關掉滾動刪除：`ACTIVE_SLAM_RECORD_FULL=true`。
-- [ ] **磁碟**：每輪 bag 2–4 GiB（加錄語意後會更大），腳本在剩餘不到 6 GiB 時會拒絕啟動。筆電只有 60 GB；AGX Orin 的 eMMC 57 GB 只剩約 12 GB（11-23，Docker image 佔掉大半），在 AGX 上錄製要先接外接 SSD 或錄完就搬走。最終板子有 512GB SSD，系統與 Docker 資料放 SSD 後這個問題基本解決。11-24 只剩約 9.6 GB；只錄 infra＋IMU（lz4）每分鐘約 0.8 GB，預設滾動保留 4 個 1 GB 分檔。
+- [ ] **磁碟**：每輪 bag 2–4 GiB（加錄語意後會更大），腳本在剩餘不到 6 GiB 時會拒絕啟動。筆電只有 60 GB；AGX Orin 的 eMMC 57 GB 只剩約 12 GB（11-23，Docker image 佔掉大半），在 AGX 上錄製要先接外接 SSD 或錄完就搬走。最終板子有 512GB SSD，系統與 Docker 資料放 SSD 後這個問題基本解決。11-24 清理後剩約 13 GB；只錄 infra＋IMU（lz4）每分鐘約 0.8 GB，預設滾動保留 4 個 1 GB 分檔。
 - [ ] 決定 IR emitter 的實驗設定（開或關），記錄在每輪的 metadata 裡，比較時要用相同的設定。
 - [ ] 場景組：物件多、**物件少**（之後拿來驗證 RAVEN 的特徵點 loop closure 備援）、繞一圈回到起點、白牆走廊（測 VIO 漂移）。每種錄 3 次以上；ground truth 用 AprilTag 加捲尺。**優先用 ground truth 驗證 11-17 那次 0.8 m 的 SLC 修正是否正確。**
 - [ ] 注意：原作者實際上**只把椅子**建成地標（`process_cloud_node.py` 只取標號 1）；11-18 起手持設定改為椅子、餐桌、電視三類（`object_class_labels`），基線實驗要記得設回 `[1]`。場景設計要避免一排等距、長得一樣的椅子（11-18 實測會造成比對無法確定），並讓桌子、電視和椅子能一起被看到。
@@ -82,8 +84,9 @@
 - [x] 確定板子：開發測試用 AGX Orin 64GB，最終用 AIR6N0 載板＋Orin NX 16GB（見開頭）。JetPack 6.2 是 Ubuntu 22.04，沒有原生 Noetic，改用 Ubuntu 20.04／Noetic 的 Docker image。可以參考 Perception-Aware Exploration in Feature-Limited Environments（arXiv 2603.15605）在 Jetson Orin NX 上的配置。
 - [x] ARM64 Docker（commit `2f02faa`）：主容器 `activeslam:noetic`（Ubuntu 20.04，torch 2.4.1、open3d 0.14.1，以 LD_PRELOAD 解決 libgomp 的 static TLS 問題；Jetson 上不開 GPU passthrough，因為主機的 L4T 函式庫和 20.04 不相容）；GPU YOLO 另外跑在 `activeslam-yolo-gpu:r36.4`（`dustynv/l4t-pytorch:r36.4.0`，CUDA 12.6），透過 localhost TCP 提供給 `detect.py`。其他依賴版本見 `local_migration_status.txt`：GTSAM 4.0.3、Ceres 2.0.0、fmt 8.0.0、glog 0.6.0、Sophus `49a7e128`、RealSense SDK 2.50.0（Jetson 上另有 2.54.2 的 `activeslam:noetic-rs254`）。
 - [x] `docker/Dockerfile.rs` 已納入 repo（`e56e672`）：在 `activeslam:noetic` 上把 librealsense 換成 2.54.2（RSUSB）。build context 需要另外放 librealsense 原始碼壓縮檔與 CA bundle（見檔頭說明）；換 image 後 `realsense_ws` 要重建一次。
-- [x] **板子上的系統設定已寫成腳本（11-24）**：`setup/jetson_host_setup.sh`（預設只檢查，`--apply` 套用），說明在 `setup/JETSON_HOST_SETUP.md`。PipeWire 關 v4l2 監控（使用者設定）；USB autosuspend 改成持久設定（systemd 開機寫入 -1，加上 RealSense udev `power/control=on`）；`uvcvideo` 只檢查不改（效果未證實）。
-  - [ ] 在 AGX 上先跑檢查模式，確認結果和目前手動設定一致（特別是 `~/.config/pipewire/...` 的內容），再 `--apply` 並重開機驗證。
+- [x] **板子上的系統設定已寫成腳本（11-24）**：`setup/jetson_host_setup.sh`（預設只檢查，`--apply` 套用），說明在 `setup/JETSON_HOST_SETUP.md`（PR #8，已合併；`--apply` 只在真的改了 PipeWire 設定時才重啟 pipewire）。PipeWire 關 v4l2 監控（使用者設定）；USB autosuspend 改成持久設定（systemd 開機寫入 -1，加上 RealSense udev `power/control=on`）；`uvcvideo` 只檢查不改（效果未證實）。
+  - [x] AGX 上的檢查模式（11-24）：PipeWire 判斷 `[ok]`，和手動設定一致；autosuspend 目前是手動設的 -1；udev 規則與 systemd 服務尚未安裝；D435i 以 5000 Mb/s（USB 3）連線。
+  - [ ] 在 AGX 上 `--apply`（需要 sudo 密碼，在相機沒串流時跑），重開機後再跑檢查模式，確認 autosuspend 仍是 -1、相機 `power/control=on`、串流正常。
 - [ ] Jetson 專用的預設值都在 `docker/run.sh`（`ACTIVESLAM_COLOR_FPS=15`、`ACTIVESLAM_CAMERA_ALIGN=false`、`ACTIVESLAM_RVIZ_PREFIX="nice -n 19"`、`ACTIVESLAM_VINS_TRACK_USED_ONLY=1`）；到 NX 上要逐項重新驗證。
 - [x] **NX 上用 JetPack 6.2**（11-24 確定）：和 AGX 一樣是 L4T R36.4.x，兩個 Docker image 可以直接沿用（YOLO 容器的 `r36.4` base 必須和主機 L4T 版本相符）。
 - [ ] **仍要向載板廠商確認**：是否要刷廠商提供的 BSP（第三方載板通常需要）、能否從 NVMe SSD 開機、擴充板 4×USB3.2-A 的驅動、載板的供電與散熱是否支援 MAXN Super。
