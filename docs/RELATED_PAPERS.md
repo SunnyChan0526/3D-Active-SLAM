@@ -111,6 +111,7 @@
 
 1. Tao：已經複現，把弱點列清楚。
 2. RAVEN：改進的主線，重點讀 loop closure 候選、λ 和 OFIF 三節。
-3. Region Based SLAM-Aware Exploration：手持模式的 SLC 觸發已在 2026-11-17 實作完成（見 SYSTEM_OVERVIEW 第 2.5 節）。可以拿它的觸發規則來檢討目前的做法。
-4. Perception-Aware Exploration in Feature-Limited Environments：上 UAV 和 Jetson 前讀。
-5. 其他論文在寫 related work 時再查。
+3. Zhang 等（ICRA 2022）：RAVEN 的前身，架構和本專案相同（VINS-Fusion + D435i）。重點讀第 IV-B 節（loop closure 後即時重新整合 TSDF）和第 IV-D 節（用繞路成本決定要不要做主動 loop closure）。
+4. Region Based SLAM-Aware Exploration：手持模式的 SLC 觸發已在 2026-11-17 實作完成（見 SYSTEM_OVERVIEW 第 2.5 節）。可以拿它的觸發規則來檢討目前的做法。
+5. Perception-Aware Exploration in Feature-Limited Environments：上 UAV 和 Jetson 前讀。
+6. 其他論文在寫 related work 時再查。
