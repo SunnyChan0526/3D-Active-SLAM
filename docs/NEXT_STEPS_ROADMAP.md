@@ -60,22 +60,27 @@
 - **參考：用模擬對照**：不確定原版流程是否正常時，用 `tmux_sim_closure_submap.launch` 在模擬裡對照；觸發規則可參考 Region Based SLAM-Aware Exploration（arXiv 2504.10416）。
 
 ## 步驟 2｜錄資料、建立 baseline
-> **優先順序（11-24 決定）：目前以複現為主，完整的 ground truth（AprilTag、量檢查點與物體位置）等複現成功後再做。** 工具先放著（PR #9），預設行為不變。複現期間只做最低限度：每輪從同一個起點十字出發、用 `ACTIVE_SLAM_RECORD_FULL=true` 錄完整 bag、迴環成功時在相機正下方貼膠帶並記下時間、結束時走回起點，讓這些 bag 之後還能補做評估。
-> 詳細流程見 [setup/GROUND_TRUTH_PROTOCOL.md](../setup/GROUND_TRUTH_PROTOCOL.md)（11-24 新增）。
-- [x] **Ground truth 工具（11-24，尚未實機測試）**：錄製時輸入 `m <編號>` 留下 `/gt_marker`；場景檔範本 `setup/ground_truth/scene_template.yaml`（檢查點、AprilTag、物體）；`setup/ground_truth/apriltag_offline.sh` 離線偵測 tag；`setup/eval_ground_truth.py` 算檢查點誤差、判斷每次位姿跳動（迴環修正）是對是錯，輸出 TUM 給 `evo`。評估程式有單元測試（`setup/tests/test_eval_ground_truth.py`）。
+> 11-24 決定：**目前以複現為主，不做 ground truth（AprilTag 加捲尺）**。ground truth 相關項目都移到下方「複現成功後再做」，現在不用管。
+
+### 複現期間要做的
+- [ ] **最低限度的紀錄**：每輪從同一個起點十字出發、用 `ACTIVE_SLAM_RECORD_FULL=true` 錄完整 bag、迴環成功時在相機正下方貼膠帶並記下時間、結束時走回起點。只是讓這些 bag 之後還能補做評估，不需要量任何東西。
 - [x] **每輪自動寫 `run_metadata.yaml`（11-24）**：場景、IR emitter、地標類別、ig_weight、git commit、電源模式與相關參數。新增 `ACTIVE_SLAM_DISABLE_IR_EMITTER`（預設 true，和以前一樣）、`ACTIVE_SLAM_OBJECT_CLASSES`（例如 `1` 為原作者的椅子基線）。
 - [x] **錄到外接 SSD（11-24）**：`ACTIVESLAM_RESULTS_DIR=<目錄> docker/run.sh` 掛進容器，錄製結果與磁碟檢查都改用這個位置。
-- [ ] **第一次布置的檢查**：先錄 1 輪 `isolated`，確認離線 tag 位姿和檢查點吻合（報告中的「檢查點 vs AprilTag」只差幾公分），再開始正式實驗。
 - [x] **補錄語意 topic**：在 `record_isolated_vins_test.sh` 補錄語意需要的 topic（color、aligned depth 與各自的 camera_info）：`ACTIVE_SLAM_RECORD_SEMANTIC=true`，約 25–45 MB/s。
 - [x] **不滾動錄製**：實驗用錄製可關掉滾動刪除，`ACTIVE_SLAM_RECORD_FULL=true`。
 - [ ] **磁碟**：每輪 bag 2–4 GiB（加錄語意後會更大），腳本在剩餘不到 6 GiB 時會拒絕啟動。筆電只有 60 GB；AGX Orin 的 eMMC 57 GB 只剩約 12 GB（11-23，Docker image 佔掉大半），在 AGX 上錄製要先接外接 SSD 或錄完就搬走。最終板子有 512GB SSD，系統與 Docker 資料放 SSD 後這個問題基本解決。11-24 清理後剩約 13 GB；只錄 infra＋IMU（lz4）每分鐘約 0.8 GB，預設滾動保留 4 個 1 GB 分檔。
-- [ ] **IR emitter 設定**：決定 IR emitter 的實驗設定（開或關），用 `ACTIVE_SLAM_DISABLE_IR_EMITTER` 設定（會自動記錄在 `run_metadata.yaml`），比較時要用相同的設定。emitter 開著時投影點可能干擾 tag 偵測。
-- [ ] **四種場景與 0.8 m 驗證**：物件多、**物件少**（之後拿來驗證 RAVEN 的特徵點 loop closure 備援；比對少於 3 個物體一定失敗，所以分 3 個與 0–2 個兩組）、繞一圈回到起點、白牆走廊（測 VIO 漂移；tag 只貼兩端）。每種錄 3 次以上；ground truth 用 AprilTag 加捲尺。**複現成功後，第一件事是用 ground truth 驗證 11-17 那次 0.8 m 的 SLC 修正是否正確。**
-  - 0.8 m 小於現在 1 m 的拒絕門檻，同樣的修正現在仍會被接受，所以仍需驗證。11-17 那輪沒有記下實際位置，而且是滾動錄製，只能事後粗略判斷（路線 A）；主要做法是在同一個房間、同樣擺法重現並標記迴環點（路線 B），累積至少 3 次成功的迴環再下結論。
+- [ ] **IR emitter 設定**：決定 IR emitter 的實驗設定（開或關），用 `ACTIVE_SLAM_DISABLE_IR_EMITTER` 設定（會自動記錄在 `run_metadata.yaml`），比較時要用相同的設定。
 - [ ] **地標類別與場景擺設**：原作者實際上**只把椅子**建成地標（`process_cloud_node.py` 只取標號 1）；11-18 起手持設定改為椅子、餐桌、電視三類（`object_class_labels`），基線實驗要記得設回 `[1]`（重播時 `ACTIVE_SLAM_OBJECT_CLASSES=1`）。場景設計要避免一排等距、長得一樣的椅子（11-18 實測會造成比對無法確定），並讓桌子、電視和椅子能一起被看到。
-- [ ] **評估指標**：回到起點時的位置與 yaw 誤差、物件間距離誤差、SLC 成功率與誤判次數、pose 協方差 trace。評估程式已涵蓋回到起點誤差、檢查點誤差與迴環修正對錯；物件間距離誤差與協方差 trace 還沒做。
 - [ ] **用同一批 bag 重播對照**：對照實驗都用同一批 bag 重播，每種設定跑多次。限制：bag 只能評估感知和 SLAM 這一段，規劃好不好要靠模擬或實飛。
 - [ ] **固定起點與朝向**：手持測試要固定起點與起始朝向。世界座標以啟動時相機為原點，起始朝向＝+Y、左＝-X；房間範圍（`ACTIVE_SLAM_ROOM_*`）與高度範圍都依此計算。
+
+### 複現成功後再做（ground truth，現在先不做）
+> 詳細流程見 [setup/GROUND_TRUTH_PROTOCOL.md](../setup/GROUND_TRUTH_PROTOCOL.md)。工具已合併（PR #9），不使用時不影響任何預設行為。
+- [x] **Ground truth 工具（11-24，尚未實機測試）**：錄製時輸入 `m <編號>` 留下 `/gt_marker`；場景檔範本 `setup/ground_truth/scene_template.yaml`（檢查點、AprilTag、物體）；`setup/ground_truth/apriltag_offline.sh` 離線偵測 tag；`setup/eval_ground_truth.py` 算檢查點誤差、判斷每次位姿跳動（迴環修正）是對是錯，輸出 TUM 給 `evo`。評估程式有單元測試（`setup/tests/test_eval_ground_truth.py`）。
+- [ ] **第一次布置的檢查**：先錄 1 輪 `isolated`，確認離線 tag 位姿和檢查點吻合（報告中的「檢查點 vs AprilTag」只差幾公分），再開始正式實驗。
+- [ ] **四種場景與 0.8 m 驗證**：物件多、**物件少**（之後拿來驗證 RAVEN 的特徵點 loop closure 備援；比對少於 3 個物體一定失敗，所以分 3 個與 0–2 個兩組）、繞一圈回到起點、白牆走廊（測 VIO 漂移；tag 只貼兩端）。每種錄 3 次以上；ground truth 用 AprilTag 加捲尺。**第一件事是用 ground truth 驗證 11-17 那次 0.8 m 的 SLC 修正是否正確。**
+  - 0.8 m 小於現在 1 m 的拒絕門檻，同樣的修正現在仍會被接受，所以仍需驗證。11-17 那輪沒有記下實際位置，而且是滾動錄製，只能事後粗略判斷（路線 A）；主要做法是在同一個房間、同樣擺法重現並標記迴環點（路線 B），累積至少 3 次成功的迴環再下結論。
+- [ ] **評估指標**：回到起點時的位置與 yaw 誤差、物件間距離誤差、SLC 成功率與誤判次數、pose 協方差 trace。評估程式已涵蓋回到起點誤差、檢查點誤差與迴環修正對錯；物件間距離誤差與協方差 trace 還沒做。
 
 ## 步驟 3｜效能剖析與輕量化（在 Jetson 上做）
 - [ ] **在 NX 規格上量（可先把 AGX 模擬成 NX）**：目標是 Orin NX 16GB，不是 AGX，在 AGX 上量到的數字只能當上限參考。可選：把 AGX Orin 開發套件用 NVIDIA 官方的模擬模式刷成 Orin NX 16GB 規格（`jetson-agx-orin-devkit-as-nx-16gb` 一類的設定），在載板到貨前取得接近實際的數字；重新刷機會清掉板子上的資料，要先備份。
