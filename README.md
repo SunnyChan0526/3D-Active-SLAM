@@ -13,6 +13,7 @@ Upstream origins and base commits: see [UPSTREAM.md](UPSTREAM.md).
 System overview and how to run: [docs/SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md).
 What to do next: [docs/NEXT_STEPS_ROADMAP.md](docs/NEXT_STEPS_ROADMAP.md).
 Related papers and reading order: [docs/RELATED_PAPERS.md](docs/RELATED_PAPERS.md).
+UAV active SLAM paper comparison (2021–2026): [docs/UAV_ACTIVE_SLAM_COMPARISON.md](docs/UAV_ACTIVE_SLAM_COMPARISON.md).
 New-machine setup: see [new_ubuntu_migration.md](new_ubuntu_migration.md) and
 [local_migration_status.txt](local_migration_status.txt).
 
