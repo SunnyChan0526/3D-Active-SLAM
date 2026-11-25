@@ -8,6 +8,8 @@
 > 2026-11-17 從 Claude web 專案移進 repo。內容未改，只整理成 Markdown 標題與表格，並更新檔名參照與第七節第 3 點。
 >
 > 2026-11-24 補上每篇論文的連結：有 arXiv 的放 arXiv，沒有的放 DOI 或出版社頁面。找不到或不確定的會直接註明。
+>
+> 2026-11-25 用引用網路補查無人機 Active SLAM，新增 REAL、Zhang 等（ICRA 2022）、FU-MPC 三篇（第二節）。這三篇和 Tao、RAVEN 的逐項比較見 [UAV_ACTIVE_SLAM_COMPARISON.md](UAV_ACTIVE_SLAM_COMPARISON.md)。
 
 ## 一、主線（一定要讀）
 
@@ -61,6 +63,9 @@
 | ✅ [RT-GuIDE](https://arxiv.org/abs/2409.18122)（RA-L 2025，arXiv 2409.18122，[DOI](https://doi.org/10.1109/LRA.2025.3615039)，[程式碼](https://github.com/KumarRobotics/RT-GuIDE)） | 地面車 Jackal，用 LiDAR 定位 | 想把地圖換成 3D 高斯潑濺時，參考它的資訊增益和視角選擇。它假設定位準確，算力需求也高（RTX 4000），不適合直接上 UAV |
 | ✅ [SCREP](https://arxiv.org/abs/2507.07467)（IROS 2026，arXiv 2507.07467） | GPS 拒止的室內飛行，只做了硬體在環驗證 | 感知導向的視覺定位：讓相機朝定位可靠的方向看 |
 | ✅ [Perception-aware Planning for Quadrotor Flight in Unknown and Feature-limited Environments](https://arxiv.org/abs/2503.15273)（LA-Planner 的論文，arXiv 2503.15273） | 四旋翼，低紋理環境 | 感知導向規劃，有開源程式碼（見第六節） |
+| ✅ [Exploration with Global Consistency Using Real-Time Re-integration and Active Loop Closure](https://arxiv.org/abs/2204.02693)（Zhang、Zhou、Wang、Shen，ICRA 2022，arXiv 2204.02693） | 四旋翼，**VINS-Fusion + D435i**，DJI Manifold 2-C；教室 20×14×3 m | 和本專案的 VINS-Fusion + D435i 架構相同，也是 RAVEN 的前身。主動 loop closure 規則很簡單：繞路成本不超過原路線的 (1+ε) 倍才去（ε=0.2）。另外 loop closure 後會即時重新整合 TSDF 地圖，可參考來修正 loop closure 後的地圖扭曲 |
+| ✅ [REAL: Rapid Exploration with Active Loop-Closing toward Large-Scale 3D Mapping using UAVs](https://arxiv.org/abs/2108.02590)（KAIST，IROS 2021，arXiv 2108.02590） | 四旋翼，實機用 T265 定位 + D435i 建圖（模擬用 VINS-Stereo）；地下空間 38×19×3 m | RAVEN 的比較對象之一。loop closure 候選規則：歐氏距離近、但沿軌跡測地距離遠的節點，選似然最大者。可以當特徵點 loop closure 候選的簡單基線 |
+| ✅ [FU-MPC](https://arxiv.org/abs/2605.14920)（NTU Lihua Xie 組，2026，arXiv 2605.14920，[專案頁](https://kafeiyin00.github.io/FU-MPC/)） | 四旋翼，主動旋轉 LiDAR，Intel N305；**戶外**實飛 | 用 MPC 同時優化 frontier 增益和方向性定位不確定性（A-optimality）。感測器不同（LiDAR），但「主動控制感測方向以兼顧探索和定位」的寫法可以參考 |
 
 ## 三、背景與相關研究（寫論文時引用）
 
